@@ -1,0 +1,62 @@
+{"commands": [
+ {"create": "regions", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "kind", "name"], "properties": {
+  "_id": {"bsonType": "string"}, "parent_code": {"bsonType": ["string", "null"]}, "kind": {"enum": ["province", "city"]}, "name": {"bsonType": "string"}}}}},
+ {"create": "services", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "name", "category"], "properties": {
+  "_id": {"bsonType": "string"}, "name": {"bsonType": "string"}, "category": {"bsonType": "string"}}}}},
+ {"create": "hospitals", "validator": {
+  "$jsonSchema": {"bsonType": "object", "required": ["_id", "name", "city_code", "province_code", "data_origin", "services", "beds"], "properties": {
+   "_id": {"bsonType": "string"}, "external_id": {"bsonType": "string"}, "source_namespace": {"bsonType": "string"},
+   "name": {"bsonType": "string"}, "address": {"bsonType": ["string", "null"]}, "city_code": {"bsonType": "string"}, "province_code": {"bsonType": "string"},
+   "latitude": {"bsonType": ["double", "null"], "minimum": -90, "maximum": 90}, "longitude": {"bsonType": ["double", "null"], "minimum": -180, "maximum": 180},
+   "phone": {"bsonType": ["string", "null"]}, "bpjs": {"bsonType": ["bool", "null"]},
+   "data_origin": {"enum": ["curated", "simulation", "satusehat_sandbox", "satusehat_production"]},
+   "source_url": {"bsonType": ["string", "null"]}, "source_updated_at": {"bsonType": ["date", "null"]}, "synced_at": {"bsonType": ["date", "null"]}, "verified_at": {"bsonType": ["date", "null"]},
+   "services": {"bsonType": "array", "items": {"bsonType": "object", "required": ["slug", "status", "data_origin", "version"], "properties": {
+    "slug": {"bsonType": "string"}, "status": {"enum": ["available", "limited", "unavailable", "unknown"]},
+    "data_origin": {"enum": ["curated", "simulation", "satusehat_sandbox", "satusehat_production"]},
+    "source_url": {"bsonType": ["string", "null"]}, "source_updated_at": {"bsonType": ["date", "null"]}, "synced_at": {"bsonType": ["date", "null"]}, "verified_at": {"bsonType": ["date", "null"]},
+    "version": {"bsonType": ["int", "long"], "minimum": 1}}}},
+   "beds": {"bsonType": "array", "items": {"bsonType": "object", "required": ["category", "total", "available", "data_origin", "version"], "properties": {
+    "category": {"enum": ["icu", "nicu", "picu", "general"]},
+    "total": {"bsonType": ["int", "long", "null"], "minimum": 0}, "available": {"bsonType": ["int", "long", "null"], "minimum": 0},
+    "data_origin": {"enum": ["curated", "simulation", "satusehat_sandbox", "satusehat_production"]},
+    "source_url": {"bsonType": ["string", "null"]}, "source_updated_at": {"bsonType": ["date", "null"]}, "synced_at": {"bsonType": ["date", "null"]}, "verified_at": {"bsonType": ["date", "null"]},
+    "version": {"bsonType": ["int", "long"], "minimum": 1}}}}}},
+  "$expr": {"$and": [
+   {"$eq": [{"$eq": [{"$ifNull": ["$latitude", null]}, null]}, {"$eq": [{"$ifNull": ["$longitude", null]}, null]}]},
+   {"$eq": [{"$size": {"$setUnion": ["$services.slug", []]}}, {"$size": "$services"}]},
+   {"$eq": [{"$size": {"$setUnion": ["$beds.category", []]}}, {"$size": "$beds"}]},
+   {"$allElementsTrue": [{"$map": {"input": "$beds", "in": {"$lte": [{"$ifNull": ["$$this.available", 0]}, {"$ifNull": ["$$this.total", 2147483647]}]}}}]}]}}},
+ {"create": "operators", "validator": {
+  "$jsonSchema": {"bsonType": "object", "required": ["_id", "email", "password_hash", "active", "hospital_ids"], "properties": {
+   "_id": {"bsonType": "string"}, "email": {"bsonType": "string", "maxLength": 254}, "password_hash": {"bsonType": "string"}, "active": {"bsonType": "bool"},
+   "hospital_ids": {"bsonType": "array", "uniqueItems": true, "items": {"bsonType": "string"}}}},
+  "$expr": {"$eq": ["$email", {"$toLower": {"$trim": {"input": "$email"}}}]}}},
+ {"create": "sessions", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "operator_id", "csrf_hash", "expires_at", "revoked_at"], "properties": {
+  "_id": {"bsonType": "string"}, "operator_id": {"bsonType": "string"}, "csrf_hash": {"bsonType": "string"}, "expires_at": {"bsonType": "date"}, "revoked_at": {"bsonType": ["date", "null"]}}}}},
+ {"create": "referrals", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "owner_hospital_id", "destination_hospital_id", "tracking_token_hash", "status", "public_note", "next_step", "version", "is_demo", "updated_at"], "properties": {
+  "_id": {"bsonType": "string"}, "owner_hospital_id": {"bsonType": "string"}, "destination_hospital_id": {"bsonType": ["string", "null"]}, "tracking_token_hash": {"bsonType": "string"},
+  "status": {"enum": ["submitted", "verified", "searching", "confirmed", "completed", "rejected"]},
+  "public_note": {"bsonType": "string", "maxLength": 500}, "next_step": {"bsonType": "string"},
+  "version": {"bsonType": ["int", "long"], "minimum": 1}, "is_demo": {"enum": [true]}, "updated_at": {"bsonType": "date"}}}}},
+ {"create": "referral_status_history", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["referral_id", "from_status", "to_status", "public_note", "actor_id", "created_at"], "properties": {
+  "referral_id": {"bsonType": "string"},
+  "from_status": {"enum": ["submitted", "verified", "searching", "confirmed", "completed", "rejected", null]},
+  "to_status": {"enum": ["submitted", "verified", "searching", "confirmed", "completed", "rejected"]},
+  "public_note": {"bsonType": "string", "maxLength": 500}, "actor_id": {"bsonType": ["string", "null"]}, "created_at": {"bsonType": "date"}}}}},
+ {"create": "audit_logs", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["actor_id", "action", "entity_id", "changes", "request_id", "created_at"], "properties": {
+  "actor_id": {"bsonType": "string"}, "action": {"bsonType": "string"}, "entity_id": {"bsonType": "string"}, "changes": {"bsonType": "object"},
+  "request_id": {"bsonType": "string"}, "created_at": {"bsonType": "date"}}}}},
+ {"createIndexes": "regions", "indexes": [{"key": {"parent_code": 1}, "name": "regions_parent_idx"}]},
+ {"createIndexes": "hospitals", "indexes": [
+  {"key": {"source_namespace": 1, "external_id": 1}, "name": "hospitals_external_unique", "unique": true, "partialFilterExpression": {"external_id": {"$type": "string"}}},
+  {"key": {"name": 1, "_id": 1}, "name": "hospitals_name_idx"},
+  {"key": {"city_code": 1}, "name": "hospitals_city_idx"}]},
+ {"createIndexes": "operators", "indexes": [{"key": {"email": 1}, "name": "operators_email_unique", "unique": true}, {"key": {"hospital_ids": 1}, "name": "operators_hospital_idx"}]},
+ {"createIndexes": "sessions", "indexes": [{"key": {"expires_at": 1}, "name": "sessions_expiry_ttl", "expireAfterSeconds": 86400}]},
+ {"createIndexes": "referrals", "indexes": [
+  {"key": {"tracking_token_hash": 1}, "name": "referrals_tracking_unique", "unique": true},
+  {"key": {"owner_hospital_id": 1, "updated_at": -1, "_id": 1}, "name": "referrals_owner_idx"}]},
+ {"createIndexes": "referral_status_history", "indexes": [{"key": {"referral_id": 1, "created_at": 1, "_id": 1}, "name": "referral_history_idx"}]},
+ {"createIndexes": "audit_logs", "indexes": [{"key": {"entity_id": 1, "created_at": 1}, "name": "audit_entity_idx"}]}
+]}

@@ -1,0 +1,271 @@
+{
+  "hospital_detail": {
+    "data": {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "name": "RS Simulasi Siaga 01",
+      "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
+      "city_code": "31.71",
+      "city_name": "Jakarta Selatan",
+      "province_code": "31",
+      "province_name": "DKI Jakarta",
+      "latitude": -6.22,
+      "longitude": 106.73,
+      "phone": null,
+      "bpjs": null,
+      "distance_km": null,
+      "data_origin": "simulation",
+      "source_url": null,
+      "source_updated_at": "2026-10-23T08:00:00Z",
+      "synced_at": "2026-10-23T08:01:00Z",
+      "verified_at": null,
+      "freshness": "fresh",
+      "services": [
+        {
+          "slug": "nicu",
+          "name": "NICU",
+          "status": "available",
+          "data_origin": "simulation",
+          "source_url": null,
+          "source_updated_at": "2026-10-23T08:00:00Z",
+          "synced_at": "2026-10-23T08:01:00Z",
+          "verified_at": null,
+          "freshness": "fresh",
+          "version": 1
+        }
+      ],
+      "beds": [
+        {
+          "category": "nicu",
+          "total": null,
+          "available": 0,
+          "data_origin": "simulation",
+          "source_url": null,
+          "source_updated_at": "2026-10-23T08:00:00Z",
+          "synced_at": "2026-10-23T08:01:00Z",
+          "verified_at": null,
+          "freshness": "fresh",
+          "version": 1
+        }
+      ]
+    },
+    "meta": {
+      "as_of": "2026-10-23T08:20:00Z"
+    }
+  },
+  "hospital_list": {
+    "data": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "name": "RS Simulasi Siaga 01",
+        "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
+        "city_code": "31.71",
+        "city_name": "Jakarta Selatan",
+        "province_code": "31",
+        "province_name": "DKI Jakarta",
+        "latitude": -6.22,
+        "longitude": 106.73,
+        "phone": null,
+        "bpjs": null,
+        "distance_km": null,
+        "data_origin": "simulation",
+        "source_url": null,
+        "source_updated_at": "2026-10-23T08:00:00Z",
+        "synced_at": "2026-10-23T08:01:00Z",
+        "verified_at": null,
+        "freshness": "fresh",
+        "services": [
+          {
+            "slug": "nicu",
+            "name": "NICU",
+            "status": "available",
+            "data_origin": "simulation",
+            "source_url": null,
+            "source_updated_at": "2026-10-23T08:00:00Z",
+            "synced_at": "2026-10-23T08:01:00Z",
+            "verified_at": null,
+            "freshness": "fresh",
+            "version": 1
+          }
+        ],
+        "beds": [
+          {
+            "category": "nicu",
+            "total": null,
+            "available": 0,
+            "data_origin": "simulation",
+            "source_url": null,
+            "source_updated_at": "2026-10-23T08:00:00Z",
+            "synced_at": "2026-10-23T08:01:00Z",
+            "verified_at": null,
+            "freshness": "fresh",
+            "version": 1
+          }
+        ]
+      }
+    ],
+    "meta": {
+      "page": 1,
+      "limit": 20,
+      "total": 1,
+      "total_pages": 1,
+      "as_of": "2026-10-23T08:20:00Z",
+      "data_scope": "pilot"
+    }
+  },
+  "tracking": {
+    "data": {
+      "public_status": "searching",
+      "public_note": "Skenario publik sintetis",
+      "next_step": "Menunggu konfirmasi simulasi",
+      "destination": {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "name": "RS Simulasi Siaga 01",
+        "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
+        "city_code": "31.71",
+        "city_name": "Jakarta Selatan",
+        "province_code": "31",
+        "province_name": "DKI Jakarta",
+        "latitude": -6.22,
+        "longitude": 106.73,
+        "phone": null,
+        "bpjs": null,
+        "distance_km": null,
+        "data_origin": "simulation",
+        "source_url": null,
+        "source_updated_at": "2026-10-23T08:00:00Z",
+        "synced_at": "2026-10-23T08:01:00Z",
+        "verified_at": null,
+        "freshness": "fresh",
+        "services": [
+          {
+            "slug": "nicu",
+            "name": "NICU",
+            "status": "available",
+            "data_origin": "simulation",
+            "source_url": null,
+            "source_updated_at": "2026-10-23T08:00:00Z",
+            "synced_at": "2026-10-23T08:01:00Z",
+            "verified_at": null,
+            "freshness": "fresh",
+            "version": 1
+          }
+        ],
+        "beds": [
+          {
+            "category": "nicu",
+            "total": null,
+            "available": 0,
+            "data_origin": "simulation",
+            "source_url": null,
+            "source_updated_at": "2026-10-23T08:00:00Z",
+            "synced_at": "2026-10-23T08:01:00Z",
+            "verified_at": null,
+            "freshness": "fresh",
+            "version": 1
+          }
+        ]
+      },
+      "updated_at": "2026-10-23T08:00:00Z",
+      "history": [
+        {
+          "from_status": null,
+          "to_status": "submitted",
+          "public_note": "Skenario publik sintetis",
+          "created_at": "2026-10-23T07:00:00Z"
+        }
+      ]
+    }
+  },
+  "conflict": {
+    "error": {
+      "code": "conflict",
+      "message": "Versi atau transisi bentrok; muat ulang data"
+    },
+    "request_id": "request-id-example"
+  },
+  "hospital_compare": {
+    "data": [
+      {
+        "id": "30000000-0000-4000-8000-000000000001",
+        "name": "RS Sandbox Contoh",
+        "address": "Alamat contoh data MSI Sandbox",
+        "city_code": "3171",
+        "city_name": "Jakarta Pusat",
+        "province_code": "31",
+        "province_name": "DKI Jakarta",
+        "latitude": -6.18,
+        "longitude": 106.83,
+        "phone": null,
+        "bpjs": null,
+        "distance_km": null,
+        "data_origin": "satusehat_sandbox",
+        "source_url": null,
+        "source_updated_at": null,
+        "synced_at": "2026-10-23T08:05:00Z",
+        "verified_at": null,
+        "freshness": "unknown",
+        "services": [],
+        "beds": []
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "name": "RS Simulasi Siaga 01",
+        "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
+        "city_code": "31.71",
+        "city_name": "Jakarta Selatan",
+        "province_code": "31",
+        "province_name": "DKI Jakarta",
+        "latitude": -6.22,
+        "longitude": 106.73,
+        "phone": null,
+        "bpjs": null,
+        "distance_km": null,
+        "data_origin": "simulation",
+        "source_url": null,
+        "source_updated_at": "2026-10-23T08:00:00Z",
+        "synced_at": "2026-10-23T08:01:00Z",
+        "verified_at": null,
+        "freshness": "fresh",
+        "services": [
+          {
+            "slug": "nicu",
+            "name": "NICU",
+            "status": "available",
+            "data_origin": "simulation",
+            "source_url": null,
+            "source_updated_at": "2026-10-23T08:00:00Z",
+            "synced_at": "2026-10-23T08:01:00Z",
+            "verified_at": null,
+            "freshness": "fresh",
+            "version": 1
+          }
+        ],
+        "beds": [
+          {
+            "category": "nicu",
+            "total": null,
+            "available": 0,
+            "data_origin": "simulation",
+            "source_url": null,
+            "source_updated_at": "2026-10-23T08:00:00Z",
+            "synced_at": "2026-10-23T08:01:00Z",
+            "verified_at": null,
+            "freshness": "fresh",
+            "version": 1
+          }
+        ]
+      }
+    ],
+    "meta": {
+      "as_of": "2026-10-23T08:20:00Z",
+      "count": 2
+    }
+  },
+  "compare_not_found": {
+    "error": {
+      "code": "not_found",
+      "message": "Rumah sakit tidak ditemukan: 30000000-0000-4000-8000-000000000999"
+    },
+    "request_id": "request-id-example"
+  }
+}

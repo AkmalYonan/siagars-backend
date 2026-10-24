@@ -1,0 +1,423 @@
+{
+ "commands": [
+  {
+   "collMod": "hospitals",
+   "validator": {
+    "$jsonSchema": {
+     "bsonType": "object",
+     "required": [
+      "_id",
+      "name",
+      "city_code",
+      "province_code",
+      "data_origin",
+      "services",
+      "beds"
+     ],
+     "properties": {
+      "_id": {
+       "bsonType": "string"
+      },
+      "external_id": {
+       "bsonType": "string"
+      },
+      "source_namespace": {
+       "bsonType": "string"
+      },
+      "name": {
+       "bsonType": "string"
+      },
+      "address": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "city_code": {
+       "bsonType": "string"
+      },
+      "province_code": {
+       "bsonType": "string"
+      },
+      "latitude": {
+       "bsonType": [
+        "double",
+        "null"
+       ],
+       "minimum": -90,
+       "maximum": 90
+      },
+      "longitude": {
+       "bsonType": [
+        "double",
+        "null"
+       ],
+       "minimum": -180,
+       "maximum": 180
+      },
+      "phone": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "bpjs": {
+       "bsonType": [
+        "bool",
+        "null"
+       ]
+      },
+      "data_origin": {
+       "enum": [
+        "curated",
+        "simulation",
+        "satusehat_sandbox",
+        "satusehat_production"
+       ]
+      },
+      "source_url": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "source_updated_at": {
+       "bsonType": [
+        "date",
+        "null"
+       ]
+      },
+      "synced_at": {
+       "bsonType": [
+        "date",
+        "null"
+       ]
+      },
+      "verified_at": {
+       "bsonType": [
+        "date",
+        "null"
+       ]
+      },
+      "services": {
+       "bsonType": "array",
+       "items": {
+        "bsonType": "object",
+        "required": [
+         "slug",
+         "status",
+         "data_origin",
+         "version"
+        ],
+        "properties": {
+         "slug": {
+          "bsonType": "string"
+         },
+         "status": {
+          "enum": [
+           "available",
+           "limited",
+           "unavailable",
+           "unknown"
+          ]
+         },
+         "data_origin": {
+          "enum": [
+           "curated",
+           "simulation",
+           "satusehat_sandbox",
+           "satusehat_production"
+          ]
+         },
+         "source_url": {
+          "bsonType": [
+           "string",
+           "null"
+          ]
+         },
+         "source_updated_at": {
+          "bsonType": [
+           "date",
+           "null"
+          ]
+         },
+         "synced_at": {
+          "bsonType": [
+           "date",
+           "null"
+          ]
+         },
+         "verified_at": {
+          "bsonType": [
+           "date",
+           "null"
+          ]
+         },
+         "version": {
+          "bsonType": [
+           "int",
+           "long"
+          ],
+          "minimum": 1
+         }
+        }
+       }
+      },
+      "beds": {
+       "bsonType": "array",
+       "items": {
+        "bsonType": "object",
+        "required": [
+         "category",
+         "total",
+         "available",
+         "data_origin",
+         "version"
+        ],
+        "properties": {
+         "category": {
+          "enum": [
+           "icu",
+           "nicu",
+           "picu",
+           "general"
+          ]
+         },
+         "total": {
+          "bsonType": [
+           "int",
+           "long",
+           "null"
+          ],
+          "minimum": 0
+         },
+         "available": {
+          "bsonType": [
+           "int",
+           "long",
+           "null"
+          ],
+          "minimum": 0
+         },
+         "data_origin": {
+          "enum": [
+           "curated",
+           "simulation",
+           "satusehat_sandbox",
+           "satusehat_production"
+          ]
+         },
+         "source_url": {
+          "bsonType": [
+           "string",
+           "null"
+          ]
+         },
+         "source_updated_at": {
+          "bsonType": [
+           "date",
+           "null"
+          ]
+         },
+         "synced_at": {
+          "bsonType": [
+           "date",
+           "null"
+          ]
+         },
+         "verified_at": {
+          "bsonType": [
+           "date",
+           "null"
+          ]
+         },
+         "version": {
+          "bsonType": [
+           "int",
+           "long"
+          ],
+          "minimum": 1
+         }
+        }
+       }
+      },
+      "source_active": {
+       "bsonType": "bool"
+      },
+      "source_status": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "source_hash": {
+       "bsonType": "string"
+      },
+      "facility_code": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "facility_type_code": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "facility_subtype": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "facility_class": {
+       "bsonType": [
+        "string",
+        "null"
+       ]
+      },
+      "last_seen_at": {
+       "bsonType": "date"
+      }
+     }
+    },
+    "$expr": {
+     "$and": [
+      {
+       "$eq": [
+        {
+         "$eq": [
+          {
+           "$ifNull": [
+            "$latitude",
+            null
+           ]
+          },
+          null
+         ]
+        },
+        {
+         "$eq": [
+          {
+           "$ifNull": [
+            "$longitude",
+            null
+           ]
+          },
+          null
+         ]
+        }
+       ]
+      },
+      {
+       "$eq": [
+        {
+         "$size": {
+          "$setUnion": [
+           "$services.slug",
+           []
+          ]
+         }
+        },
+        {
+         "$size": "$services"
+        }
+       ]
+      },
+      {
+       "$eq": [
+        {
+         "$size": {
+          "$setUnion": [
+           "$beds.category",
+           []
+          ]
+         }
+        },
+        {
+         "$size": "$beds"
+        }
+       ]
+      },
+      {
+       "$allElementsTrue": [
+        {
+         "$map": {
+          "input": "$beds",
+          "in": {
+           "$lte": [
+            {
+             "$ifNull": [
+              "$$this.available",
+              0
+             ]
+            },
+            {
+             "$ifNull": [
+              "$$this.total",
+              2147483647
+             ]
+            }
+           ]
+          }
+         }
+        }
+       ]
+      },
+      {
+       "$or": [
+        {
+         "$in": [
+          {
+           "$ifNull": [
+            "$data_origin",
+            ""
+           ]
+          },
+          [
+           "curated",
+           "simulation"
+          ]
+         ]
+        },
+        {
+         "$and": [
+          {
+           "$eq": [
+            {
+             "$type": "$external_id"
+            },
+            "string"
+           ]
+          },
+          {
+           "$eq": [
+            {
+             "$type": "$source_namespace"
+            },
+            "string"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "createIndexes": "hospitals",
+   "indexes": [
+    {
+     "key": {
+      "source_namespace": 1,
+      "last_seen_at": 1
+     },
+     "name": "hospitals_source_seen_idx"
+    }
+   ]
+  }
+ ]
+}

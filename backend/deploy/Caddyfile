@@ -1,0 +1,31 @@
+# Example same-origin reverse proxy (Caddy v2). Replace siagars.example.com with your real domain.
+# PUBLIC_ORIGIN for the Go API must equal https://siagars.example.com exactly.
+# Not deployed or tested in this repository.
+siagars.example.com {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(self), camera=(), microphone=()"
+		-Server
+	}
+
+	# Only the API contract is exposed; /docs and /docs/openapi.json on the Go port stay private.
+	handle /api/v1/* {
+		request_body {
+			max_size 1MB
+		}
+		# Caddy sets X-Forwarded-For itself and overwrites any client-supplied value
+		# unless trusted_proxies is configured; do not add trusted_proxies for public clients.
+		reverse_proxy 127.0.0.1:8080 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

@@ -1,0 +1,143 @@
+package domain
+
+import (
+	"math"
+	"strings"
+	"time"
+)
+
+type Provenance struct {
+	DataOrigin      string     `json:"data_origin"`
+	SourceURL       *string    `json:"source_url"`
+	SourceUpdatedAt *time.Time `json:"source_updated_at"`
+	SyncedAt        *time.Time `json:"synced_at"`
+	VerifiedAt      *time.Time `json:"verified_at"`
+	Freshness       string     `json:"freshness"`
+}
+type Service struct {
+	Slug     string `json:"slug"`
+	Name     string `json:"name"`
+	Category string `json:"category,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Provenance
+	Version int `json:"version,omitempty"`
+}
+type Bed struct {
+	Category  string `json:"category"`
+	Total     *int   `json:"total"`
+	Available *int   `json:"available"`
+	Provenance
+	Version int `json:"version"`
+}
+type Hospital struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Address      *string  `json:"address"`
+	CityCode     string   `json:"city_code"`
+	CityName     string   `json:"city_name"`
+	ProvinceCode string   `json:"province_code"`
+	ProvinceName string   `json:"province_name"`
+	Latitude     *float64 `json:"latitude"`
+	Longitude    *float64 `json:"longitude"`
+	Phone        *string  `json:"phone"`
+	BPJS         *bool    `json:"bpjs"`
+	DistanceKM   *float64 `json:"distance_km"`
+	Provenance
+	Services []Service `json:"services"`
+	Beds     []Bed     `json:"beds"`
+}
+type History struct {
+	FromStatus *string   `json:"from_status"`
+	ToStatus   string    `json:"to_status"`
+	PublicNote string    `json:"public_note"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+type Referral struct {
+	ID                    string    `json:"id"`
+	OwnerHospitalID       string    `json:"owner_hospital_id"`
+	DestinationHospitalID *string   `json:"destination_hospital_id"`
+	Status                string    `json:"status"`
+	PublicNote            string    `json:"public_note"`
+	NextStep              string    `json:"next_step"`
+	Version               int       `json:"version"`
+	IsDemo                bool      `json:"is_demo"`
+	UpdatedAt             time.Time `json:"updated_at"`
+}
+type Operator struct {
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	HospitalIDs []string `json:"hospital_ids"`
+}
+
+func Freshness(source *time.Time, now time.Time) string {
+	if source == nil || source.After(now) {
+		return "unknown"
+	}
+	age := now.Sub(*source)
+	if age < time.Hour {
+		return "fresh"
+	}
+	if age <= 24*time.Hour {
+		return "aging"
+	}
+	return "stale"
+}
+func CanTransition(from, to, note string) bool {
+	switch from {
+	case "submitted":
+		return to == "verified"
+	case "verified":
+		return to == "searching" || to == "rejected"
+	case "searching":
+		return to == "confirmed" || to == "rejected"
+	case "confirmed":
+		return to == "completed" || (to == "searching" && strings.TrimSpace(note) != "")
+	}
+	return false
+}
+func ValidStatus(s string) bool {
+	switch s {
+	case "submitted", "verified", "searching", "confirmed", "completed", "rejected":
+		return true
+	}
+	return false
+}
+func ValidServiceStatus(s string) bool {
+	switch s {
+	case "available", "limited", "unavailable", "unknown":
+		return true
+	}
+	return false
+}
+func ValidBeds(t, a *int) bool {
+	return (t == nil || *t >= 0) && (a == nil || *a >= 0) && (t == nil || a == nil || *a <= *t)
+}
+func Distance(a, b, c, d float64) float64 {
+	const r = math.Pi / 180
+	x := math.Pow(math.Sin((c-a)*r/2), 2) + math.Cos(a*r)*math.Cos(c*r)*math.Pow(math.Sin((d-b)*r/2), 2)
+	return 6371 * 2 * math.Asin(math.Sqrt(math.Min(1, x)))
+}
+func (h *Hospital) Refresh(now time.Time) {
+	h.Freshness = Freshness(h.SourceUpdatedAt, now)
+	for i := range h.Services {
+		h.Services[i].Freshness = Freshness(h.Services[i].SourceUpdatedAt, now)
+	}
+	for i := range h.Beds {
+		h.Beds[i].Freshness = Freshness(h.Beds[i].SourceUpdatedAt, now)
+	}
+}
+
+// HospitalImport is a normalized upstream facility record, independent of the upstream payload format.
+type HospitalImport struct {
+	ExternalID, SourceNamespace, Name                             string
+	Address, Phone                                                *string
+	ProvinceCode, ProvinceName, CityCode, CityName                string
+	Latitude, Longitude                                           *float64
+	SourceActive                                                  bool
+	SourceStatus, FacilityCode, FacilityTypeCode, FacilitySubtype string
+	FacilityClass                                                 string
+	SyncedAt                                                      time.Time
+}
+type ImportResult struct {
+	Created, Updated, Unchanged, Failed int
+}

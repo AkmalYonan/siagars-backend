@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "hospitals": [
+    {
+      "external_id": "PLACEHOLDER-RS-0001",
+      "source_namespace": "satusehat:msi:sandbox",
+      "name": "RS Contoh Fiktif Satu",
+      "bpjs": true,
+      "source_url": "https://sumber-fiktif.invalid/profil/rs-0001",
+      "source_updated_at": "2026-10-20T08:00:00Z",
+      "services": [
+        { "slug": "icu", "status": "available" },
+        { "slug": "nicu", "status": "unknown" }
+      ],
+      "beds": [
+        { "category": "icu", "total": 8, "available": 0 },
+        { "category": "general", "total": 40, "available": null }
+      ]
+    },
+    {
+      "external_id": "PLACEHOLDER-RS-0002",
+      "bpjs": null,
+      "source_url": "https://sumber-fiktif.invalid/profil/rs-0002",
+      "source_updated_at": "2026-10-21T02:30:00Z",
+      "services": [
+        { "slug": "igd-24h", "status": "limited", "source_url": "https://sumber-fiktif.invalid/igd", "source_updated_at": "2026-10-22T00:00:00Z" }
+      ]
+    }
+  ]
+}

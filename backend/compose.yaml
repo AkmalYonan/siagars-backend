@@ -1,0 +1,23 @@
+# MongoDB runs on Atlas (replica set, required for transactions); no local database container.
+# All configuration is passed from the host process environment; no env_file and no .env in the image.
+# Production: set APP_ENV=production and PUBLIC_ORIGIN=https://... (see deploy/DEPLOY.md).
+services:
+  api:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      PORT: "8080"
+      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-siagars}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+      DEMO_MODE: "true"
+      SATUSEHAT_ENABLED: "false"
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

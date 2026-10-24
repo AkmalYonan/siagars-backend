@@ -1,0 +1,4499 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SiagaRS Backend",
+    "version": "0.1.0",
+    "description": "Baseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Development"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness (tanpa DB)",
+        "operationId": "get_health",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ok"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness: koneksi DB dan migration tersedia",
+        "operationId": "get_ready",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ready"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services": {
+      "get": {
+        "summary": "Master layanan",
+        "operationId": "get_services",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MasterService"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hospitals": {
+      "get": {
+        "summary": "Cari RS pilot: layanan AND, unknown berbeda dari false/0",
+        "operationId": "get_hospitals",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "description": "Nama RS, kota atau provinsi, case-insensitive"
+          },
+          {
+            "name": "province_code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Kode master provinsi lokal"
+          },
+          {
+            "name": "city_code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Kode master kota lokal"
+          },
+          {
+            "name": "services",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated slug layanan, AND; status available/limited. Hanya RS yang datanya memuat layanan tersebut yang cocok; RS dari SATUSEHAT MSI belum memiliki data layanan."
+          },
+          {
+            "name": "bpjs",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Hanya known true/false"
+          },
+          {
+            "name": "has_available_beds",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "true: available>0, fresh, non-simulation; false: tidak memfilter"
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "description": "Harus berpasangan lng"
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "description": "Harus berpasangan lat"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "distance",
+                "match"
+              ],
+              "default": "name"
+            },
+            "description": "distance butuh lat/lng; null distance terakhir. match: layanan non-simulation available +10/limited +5, fresh +3/aging +1, lalu jarak, nama, ID. Bukan skor klinis."
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Pemisah data. real (default) = semua data selain simulasi (curated, satusehat_sandbox, satusehat_production); simulation = hanya 30 RS fiktif demo; all = keduanya. Tetap periksa data_origin pada setiap item: satusehat_sandbox adalah data Sandbox, belum produksi."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Hospital"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hospitals/compare": {
+      "get": {
+        "summary": "Bandingkan 2-3 RS",
+        "description": "Detail lengkap (DTO sama dengan GET /hospitals/{id}, termasuk provenance per layanan/bed) untuk 2 sampai 3 ID unik, urutan hasil sama dengan urutan ids. Semua atau tidak sama sekali: jika ada ID yang tidak ditemukan, respons 404 dan pesan menyebut ID tersebut. Seperti detail, RS simulasi dapat dibandingkan (tidak terpengaruh dataset). Nilai unknown tetap null; bed 0 bukan null. Aditif; tidak mengubah /hospitals atau /hospitals/{id}.",
+        "operationId": "get_hospitals_compare",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "10000000-0000-4000-8000-000000000001,10000000-0000-4000-8000-000000000002"
+            },
+            "description": "2-3 UUID lowercase dipisah koma, tanpa duplikat dan tanpa spasi. Parameter lain, kosong atau berulang: 422."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 3,
+                      "items": {
+                        "$ref": "#/components/schemas/Hospital"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "as_of": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 2,
+                          "maximum": 3
+                        }
+                      },
+                      "required": [
+                        "as_of",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Satu atau lebih ID tidak ditemukan; tidak ada hasil parsial",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Rumah sakit tidak ditemukan: 10000000-0000-4000-8000-000000000999"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ids hilang, kurang dari 2, lebih dari 3, duplikat, bukan UUID, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "ids harus berisi 2 sampai 3 ID"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hospitals/{id}": {
+      "get": {
+        "summary": "Detail RS",
+        "operationId": "get_hospitals__id_",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID lowercase"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Hospital"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "as_of": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "as_of"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/referrals/lookup": {
+      "post": {
+        "summary": "Lookup tracking sintetis: DTO publik tersanitasi",
+        "operationId": "post_referrals_lookup",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Tracking"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lookup"
+              },
+              "example": {
+                "tracking_code": "SR-DEMO-001"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login operator; session cookie, token CSRF dan expiry",
+        "operationId": "post_auth_login",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "http://localhost:3000"
+            },
+            "description": "Wajib hanya untuk login dan mutasi session; lookup publik tidak memerlukan Origin."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LoginResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Profil operator dan scope RS",
+        "operationId": "get_auth_me",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Operator"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/csrf": {
+      "get": {
+        "summary": "CSRF token terikat session",
+        "operationId": "get_auth_csrf",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "csrf_token": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "csrf_token"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Revoke session dan hapus cookie",
+        "operationId": "post_auth_logout",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "logged_out": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "logged_out"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/referrals": {
+      "get": {
+        "summary": "Daftar rujukan hanya dalam scope RS operator",
+        "operationId": "get_admin_referrals",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Referral"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/referrals/{id}/status": {
+      "patch": {
+        "summary": "Transisi status + history + audit atomik",
+        "operationId": "patch_admin_referrals__id__status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID lowercase"
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "http://localhost:3000"
+            },
+            "description": "Wajib hanya untuk login dan mutasi session; lookup publik tidak memerlukan Origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Referral"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusUpdate"
+              },
+              "example": {
+                "status": "confirmed",
+                "public_note": "Konfirmasi simulasi diterima",
+                "version": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/hospitals/{id}/services/{slug}": {
+      "patch": {
+        "summary": "Update status layanan simulasi, optimistic lock",
+        "operationId": "patch_admin_hospitals__id__services__slug_",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID lowercase"
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Master slug/category"
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "http://localhost:3000"
+            },
+            "description": "Wajib hanya untuk login dan mutasi session; lookup publik tidak memerlukan Origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Service"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceUpdate"
+              },
+              "example": {
+                "status": "limited",
+                "version": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/hospitals/{id}/beds/{category}": {
+      "patch": {
+        "summary": "Update bed; null unknown, 0 diketahui, available <= total",
+        "operationId": "patch_admin_hospitals__id__beds__category_",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID lowercase"
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Master slug/category"
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "http://localhost:3000"
+            },
+            "description": "Wajib hanya untuk login dan mutasi session; lookup publik tidak memerlukan Origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Bed"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON atau field body tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Malformed JSON atau field body tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session/kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Session/kredensial tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin, CSRF atau scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Origin, CSRF atau scope RS ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource/kode tracking tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Resource/kode tracking tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Method tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Versi atau transisi bentrok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "Versi atau transisi bentrok"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body lebih dari 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Body lebih dari 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi gagal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Validasi gagal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Rate limit"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database belum siap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "request_error",
+                    "message": "Database belum siap"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BedUpdate"
+              },
+              "example": {
+                "total": 10,
+                "available": 0,
+                "version": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "siagars_session",
+        "description": "HttpOnly SameSite=Lax Path=/api/v1; Secure untuk HTTPS. CSRF header+Origin wajib untuk mutasi."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          },
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "Service": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "limited",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "data_origin": {
+            "type": "string",
+            "enum": [
+              "curated",
+              "simulation",
+              "satusehat_sandbox",
+              "satusehat_production"
+            ]
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "aging",
+              "stale",
+              "unknown"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "status",
+          "data_origin",
+          "source_url",
+          "source_updated_at",
+          "synced_at",
+          "verified_at",
+          "freshness",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "Bed": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "icu",
+              "nicu",
+              "picu",
+              "general"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "available": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "data_origin": {
+            "type": "string",
+            "enum": [
+              "curated",
+              "simulation",
+              "satusehat_sandbox",
+              "satusehat_production"
+            ]
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "aging",
+              "stale",
+              "unknown"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "category",
+          "total",
+          "available",
+          "data_origin",
+          "source_url",
+          "source_updated_at",
+          "synced_at",
+          "verified_at",
+          "freshness",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "MasterService": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "category"
+        ],
+        "additionalProperties": false
+      },
+      "Hospital": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "city_code": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "province_code": {
+            "type": "string"
+          },
+          "province_name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "bpjs": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "distance_km": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "data_origin": {
+            "type": "string",
+            "enum": [
+              "curated",
+              "simulation",
+              "satusehat_sandbox",
+              "satusehat_production"
+            ]
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "aging",
+              "stale",
+              "unknown"
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Service"
+            }
+          },
+          "beds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bed"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "city_code",
+          "city_name",
+          "province_code",
+          "province_name",
+          "latitude",
+          "longitude",
+          "phone",
+          "bpjs",
+          "distance_km",
+          "data_origin",
+          "source_url",
+          "source_updated_at",
+          "synced_at",
+          "verified_at",
+          "freshness",
+          "services",
+          "beds"
+        ],
+        "additionalProperties": false
+      },
+      "History": {
+        "type": "object",
+        "properties": {
+          "from_status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "verified",
+              "searching",
+              "confirmed",
+              "completed",
+              "rejected"
+            ],
+            "nullable": true
+          },
+          "to_status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "verified",
+              "searching",
+              "confirmed",
+              "completed",
+              "rejected"
+            ]
+          },
+          "public_note": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "from_status",
+          "to_status",
+          "public_note",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "Referral": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_hospital_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destination_hospital_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "verified",
+              "searching",
+              "confirmed",
+              "completed",
+              "rejected"
+            ]
+          },
+          "public_note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "next_step": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "is_demo": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "owner_hospital_id",
+          "destination_hospital_id",
+          "status",
+          "public_note",
+          "next_step",
+          "version",
+          "is_demo",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "Tracking": {
+        "type": "object",
+        "properties": {
+          "public_status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "verified",
+              "searching",
+              "confirmed",
+              "completed",
+              "rejected"
+            ]
+          },
+          "public_note": {
+            "type": "string"
+          },
+          "next_step": {
+            "type": "string"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Hospital",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/History"
+            }
+          }
+        },
+        "required": [
+          "public_status",
+          "public_note",
+          "next_step",
+          "destination",
+          "updated_at",
+          "history"
+        ],
+        "additionalProperties": false
+      },
+      "Operator": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "hospital_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "hospital_ids"
+        ],
+        "additionalProperties": false
+      },
+      "Login": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "LoginResult": {
+        "type": "object",
+        "properties": {
+          "csrf_token": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "csrf_token",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "Lookup": {
+        "type": "object",
+        "properties": {
+          "tracking_code": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "tracking_code"
+        ],
+        "additionalProperties": false
+      },
+      "StatusUpdate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "verified",
+              "searching",
+              "confirmed",
+              "completed",
+              "rejected"
+            ]
+          },
+          "public_note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "ServiceUpdate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "limited",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "BedUpdate": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "available": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "total",
+          "available",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "total_pages": {
+            "type": "integer"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data_scope": {
+            "type": "string",
+            "enum": [
+              "pilot"
+            ]
+          },
+          "dataset": {
+            "type": "string",
+            "enum": [
+              "real",
+              "simulation",
+              "all"
+            ],
+            "description": "Nilai dataset yang berlaku pada permintaan ini"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "total_pages",
+          "as_of",
+          "data_scope"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

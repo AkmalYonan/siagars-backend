@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "hospitals": [
+    {
+      "external_id": "ISI_KODE_SATUSEHAT_MSI",
+      "source_namespace": "satusehat:msi:sandbox",
+      "name": "ISI_NAMA_RS_PERSIS_SEPERTI_DI_DATABASE_ATAU_HAPUS_BARIS_INI",
+      "bpjs": null,
+      "source_url": "https://ISI-URL-SUMBER-PUBLIK-HTTPS",
+      "source_updated_at": "ISI_WAKTU_SUMBER_RFC3339_mis_2026-10-20T08:00:00Z",
+      "services": [
+        { "slug": "icu", "status": "unknown" },
+        { "slug": "nicu", "status": "unknown", "source_url": "https://ISI-JIKA-SUMBER-BERBEDA", "source_updated_at": "ISI_JIKA_WAKTU_BERBEDA" }
+      ],
+      "beds": [
+        { "category": "icu", "total": null, "available": null }
+      ]
+    }
+  ]
+}
