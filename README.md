@@ -37,7 +37,7 @@ go run . seed
 go run .        # API di http://localhost:8080
 ```
 
-Cek: `GET /api/v1/health` dan `/api/v1/ready`. Dokumentasi interaktif di `/docs`. Detail lengkap ada di [`backend/README.md`](backend/README.md).
+Cek: `GET /api/v1/health` dan `/api/v1/ready`. Dokumentasi interaktif tersedia di `/docs`. Detail backend ada di [`backend/README.md`](backend/README.md), sedangkan panduan integrasi frontend ada di [`backend/docs/API_FRONTEND.md`](backend/docs/API_FRONTEND.md).
 
 ## Pengujian
 

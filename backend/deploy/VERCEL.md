@@ -71,7 +71,7 @@ go run . seed
 go run ./cmd/manage operator     # butuh OPERATOR_EMAIL, OPERATOR_PASSWORD (12..72 byte), OPERATOR_HOSPITAL_IDS
 ```
 
-## Verifikasi (hasil uji 2026-10-24)
+## Verifikasi produksi 24 Oktober 2026
 
 | Endpoint | Hasil |
 |---|---|
@@ -79,8 +79,9 @@ go run ./cmd/manage operator     # butuh OPERATOR_EMAIL, OPERATOR_PASSWORD (12..
 | `GET /api/v1/ready` | 200 `{"data":{"status":"ready"}}` (Mongo terjangkau) |
 | `GET /api/v1/hospitals?limit=1` | 200, data RS |
 | `GET /api/v1/services` | 200, daftar layanan |
+| `GET /docs/openapi.json` | 200, kontrak OpenAPI JSON |
 
-Belum diuji di produksi: login operator, CSRF dan mutasi, `/docs` secara fungsional, tes Playwright `qa/`.
+Health dan readiness juga lulus tiga kali berturut-turut pada audit dokumentasi terakhir. Belum diuji di produksi: login operator, CSRF, mutasi, tampilan Swagger UI di browser, dan tes Playwright `qa/`.
 
 ## Pemecahan masalah
 

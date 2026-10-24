@@ -13,14 +13,14 @@ Alat untuk menambahkan fakta layanan, bed, dan BPJS dari **sumber publik yang sa
 
 ~~~powershell
 # Dry-run (default): validasi dan laporan saja, tanpa koneksi database, tidak ada yang ditulis.
-go run ./cmd/manage curate            # dengan $env:CURATE_FILE='data/curation/berkas-saya.json'
+go run ./cmd/manage curate data/curation/berkas-saya.json
 go run . curate data/curation/berkas-saya.json
 
 # Apply: hanya setelah checklist manusia di bawah selesai dan PIC menyetujui.
 go run . curate data/curation/berkas-saya.json --apply
 ~~~
 
-Catatan: `main.go` dan `cmd/manage` saat ini hanya meneruskan satu argumen setelah nama perintah, jadi `curate <file>` lewat `go run .` belum menerima argumen tambahan sampai gerbang `len(os.Args)` di sana dilonggarkan. Sementara itu pakai env `CURATE_FILE` dan `CURATE_APPLY=true` (setara dengan `<file>` dan `--apply`). Tes `go test ./seed` memanggil `RunCurate` langsung dengan argumen.
+Kedua entrypoint menerima `curate <file> [--apply]`. Untuk otomasi, Anda juga dapat memakai `CURATE_FILE` dan `CURATE_APPLY=true`. Tes `go test ./seed` memanggil parser dan alur dry-run secara langsung.
 
 `--apply` membaca `MONGODB_URI` dan `MONGODB_DATABASE` dari environment, mensyaratkan migration 002, dan **tidak membuat, menghapus, atau mereset** dokumen. Arahkan ke database yang memang dimaksud; jangan ke `siagars` tanpa persetujuan pemilik data.
 

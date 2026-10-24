@@ -13,6 +13,7 @@ services:
       MONGODB_DATABASE: ${MONGODB_DATABASE:-siagars}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       DEMO_MODE: "true"
       SATUSEHAT_ENABLED: "false"
     restart: unless-stopped

@@ -1,6 +1,6 @@
 # PRD - SiagaRS Backend
 
-Versi: 0.1 (revisi 24 Oktober 2026) | Baseline: 23 Oktober 2026 | Status: baseline API sudah diimplementasikan di kode (MongoDB Atlas); frontend, benchmark, Docker dan kurasi RS nyata belum terbukti. Lihat bagian 11 untuk status aktual.
+Versi: 0.1 (revisi 24 Oktober 2026) | Baseline: 23 Oktober 2026 | Status: API Must dan fitur Should backend sudah diimplementasikan di MongoDB Atlas. Benchmark pencarian dan deployment Vercel tersedia; frontend, Docker, dan kurasi RS nyata belum terbukti. Lihat bagian 11 untuk status aktual.
 
 Catatan revisi: penyimpanan pada baseline awal PostgreSQL; sejak 23 Oktober 2026 tim memindahkannya ke MongoDB Atlas (lihat docs/DECISIONS.md). Kontrak HTTP, enum dan makna null tidak berubah; parameter `dataset` (aditif) kini didokumentasikan di bagian 3.
 
@@ -97,7 +97,7 @@ Penyimpanan: MongoDB Atlas, database `siagars` (default `MONGODB_DATABASE`). Kol
 
 Integritas ditegakkan oleh validator server `$jsonSchema`/`$expr` (enum, range, null vs 0, available<=total, lat/lng berpasangan, aturan origin non-curated/simulation wajib external_id dan source_namespace) dan unique index. MongoDB tidak punya FK: keberadaan RS dicek aplikasi saat membuat operator, dan seed konsisten dengan master wilayah. Tidak ada endpoint penghapusan sehingga tidak ada cascade yang menghilangkan audit/riwayat. Nama kota/provinsi/layanan di-join di Go dari koleksi master.
 
-Pencarian saat ini memuat seluruh RS ke memory lalu filter/sort di Go (DECISIONS.md). Itu memadai untuk 30 RS seed; setelah impor MSI (516 RS Jabodetabek pada uji 23 Oktober 2026) query pushdown/index dan benchmark masih diperlukan sebelum dipakai luas. Haversine garis lurus dihitung di Go; PostGIS/geo index tidak dipakai. Seed idempotent (upsert `$setOnInsert` dan `$push` bersyarat dalam satu transaksi) tidak menghapus database dan tidak menimpa pembaruan operator.
+Pencarian mendorong filter dasar, pencarian teks, pengurutan nama, hitungan, dan paginasi ke MongoDB. `sort=distance` dan `sort=match` masih mengurutkan himpunan yang sudah difilter di Go. Migration 003 menyediakan index pencarian; benchmark Atlas untuk 3.030 dokumen tercatat di `docs/DECISIONS.md`. Haversine tetap dihitung di Go; geo index tidak dipakai. Seed idempotent tidak menghapus database dan tidak menimpa pembaruan operator.
 
 ## 6. Autentikasi dan operasi
 
@@ -134,7 +134,7 @@ Command nyata (lihat README.md): `go run .` (memuat .env), `go run ./cmd/manage 
 
 23-24 Okt kontrak/schema; 25-26 Okt API publik+seed+migration; 27-29 Okt auth/operator/tracking/integrasi; 30 Okt QA; 31 Okt freeze draft; 1 Nov First Draft. 3-6 Nov review; 7 Nov feedback; 8-10 Nov revisi; 11 Nov final submission. Jam pengumpulan belum dikonfirmasi (lihat lomba/CHECKLIST_LOMBA.md). Jangan menunda Must karena akses upstream.
 
-Risiko terbesar: data pilot tidak lengkap (RS hasil MSI belum punya layanan/bed/BPJS), auth lintas domain, drift kontrak, pencarian in-memory yang belum diukur untuk ratusan RS, dan scope berlebih. Mitigasi: metadata field-level, same-origin, snapshot OpenAPI, adapter opsional dan prioritas Must.
+Risiko terbesar: data pilot tidak lengkap, konfigurasi origin frontend, drift kontrak, limiter per instance pada Vercel, dan scope berlebih. Mitigasi: metadata field-level, same-origin, OpenAPI sebagai sumber kontrak, query pushdown teruji, adapter opsional, dan prioritas Must.
 
 ## 10. Referensi
 
@@ -150,7 +150,7 @@ Referensi teknis diakses 23 Oktober 2026. Endpoint eksternal, field yang dapat d
 
 Sumber: README.md dan docs/DECISIONS.md; angka berasal dari log pengujian yang tercatat di sana, bukan dari pengukuran baru.
 
-- Terbukti: gofmt, build, vet dan unit test lulus; suite integrasi lulus terhadap Atlas pada database tes sementara; `manage migrate` dan `manage seed` dijalankan dua kali ke `siagars` (idempotent) dengan smoke test HTTP lokal; migration 001 dan 002 diterapkan; adapter MSI teruji dengan mock dan live Sandbox 23 Oktober 2026 untuk Jabodetabek (14 kab/kota, 516 RS dibuat, 0 skip/gagal; run kedua 516 unchanged).
+- Terbukti: gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus. Migration 001-003, seed idempotent, query pushdown, compare 2-3 RS, trusted proxy, dan benchmark pencarian tersedia. Adapter MSI teruji dengan mock dan live Sandbox 23 Oktober 2026 untuk Jabodetabek: 14 kab/kota, 516 RS dibuat, 0 skip/gagal; run kedua 516 unchanged. Deployment Vercel aktif dan endpoint health, ready, hospitals, services, serta OpenAPI merespons pada verifikasi 24 Oktober 2026.
 - Seed sintetis: 30 RS fiktif (RS Simulasi Siaga 01..30), 5 layanan, 4 kategori bed, 1 rujukan demo; seluruh data berlabel simulation.
-- Belum terbukti: E2E dengan frontend, benchmark p95, Docker/Compose (disiapkan, belum dieksekusi), race detector, kurasi RS nyata (data kurasi 30-50 RS dengan 10 profil lengkap belum ada), usability <60 detik, sinkronisasi nasional, produksi SATUSEHAT, FHIR dan rujukan resmi.
-- Keterbatasan diketahui: limiter in-memory per instance, trusted proxy belum diimplementasikan, threshold freshness belum konfigurabel lewat environment, fasilitas yang dinonaktifkan upstream tidak terdeteksi otomatis, filter layanan/BPJS pada dataset real kosong karena RS MSI belum punya data tersebut.
+- Belum terbukti: E2E dengan frontend, Docker/Compose, race detector, kurasi RS nyata, usability <60 detik, sinkronisasi nasional, produksi SATUSEHAT, FHIR, dan rujukan resmi.
+- Keterbatasan diketahui: limiter berada di memory setiap instance; threshold freshness belum konfigurabel; fasilitas yang hilang dari hasil upstream tidak otomatis dinonaktifkan; data MSI belum memiliki layanan, bed, atau BPJS; query `q` berawalan `$` memiliki temuan terbuka pada jalur agregasi MongoDB.

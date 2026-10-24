@@ -1,6 +1,6 @@
 # AGENTS.md - SiagaRS Backend
 
-Instruksi untuk coding agent di repository backend Go. Baseline V0.1, 23 Oktober 2026. Baca PRD.md, git status, go.mod dan README aktual sebelum mengubah kode. Struktur/command di bawah adalah rencana jika repo belum diinisialisasi.
+Instruksi untuk coding agent di repository backend Go. Versi kerja V0.1 diperbarui 24 Oktober 2026. Baca PRD.md, status workspace, go.mod, README.md, dan docs/DECISIONS.md sebelum mengubah kode.
 
 ## Mandat dan kepemilikan
 
@@ -13,7 +13,7 @@ Instruksi untuk coding agent di repository backend Go. Baseline V0.1, 23 Oktober
 
 - `docs/openapi.yaml` adalah sumber kontrak saat implementasi dimulai; sertakan contoh sukses/galat dan enum.
 - Prefix `/api/v1`, JSON snake_case, UUID opaque, RFC3339 UTC. FE menggunakan snapshot versi yang sama.
-- API utama: GET /hospitals, /hospitals/{id}, /services; POST /referrals/lookup; POST /auth/login, /auth/logout; GET /auth/me, /auth/csrf; GET /admin/referrals; PATCH /admin/referrals/{id}/status, /admin/hospitals/{id}/services/{slug}, /admin/hospitals/{id}/beds/{category}.
+- API memiliki 15 operasi: health/readiness; layanan; daftar, detail, dan compare RS; lookup tracking; auth; serta operasi admin. `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
 - Jangan mengubah endpoint, enum, pagination atau makna null tanpa memperbarui OpenAPI, fixture dan koordinasi frontend.
 - `services` AND; limit default 20/max50; parameter unknown 422. Jarak Haversine garis lurus, bukan ETA atau ukuran kualitas klinis.
 - Unknown = null/status unknown. Bed 0 bukan unknown. Freshness terpisah dari origin/verifikasi dan dihitung berdasarkan source_updated_at, bukan synced_at.
@@ -21,7 +21,7 @@ Instruksi untuk coding agent di repository backend Go. Baseline V0.1, 23 Oktober
 ## Desain kode dan database
 
 - Pisahkan HTTP handlers, business service, repository dan adapter. Gunakan context/deadline dan filter BSON terstruktur (tanpa merakit query dari string input).
-- Migration bernomor dan reproducible; jangan edit migration yang telah diterapkan. Seed idempotent tanpa reset database default.
+- Migration bernomor dan reproducible; jangan edit migration 001-003 yang sudah tercatat. Seed idempotent tanpa reset database default.
 - Constraint FK/unique/check dan index harus mendukung integritas yang tertulis pada PRD.
 - Mutasi status+history+audit satu transaksi; optimistic locking version menghasilkan 409 untuk stale write.
 - State machine submitted->verified->searching->confirmed->completed. verified/searching->rejected; confirmed->searching wajib alasan pengalihan. completed/rejected terminal.
@@ -36,7 +36,8 @@ Instruksi untuk coding agent di repository backend Go. Baseline V0.1, 23 Oktober
 - Tracking token acak >=128 bit; kode yang mudah ditebak hanya boleh berisi skenario demo publik sintetis. Rate limit lookup/login; jangan log token/kode mentah.
 - SATUSEHAT client_id/client_secret/token hanya di backend environment; jangan commit atau mengirim ke browser.
 - Jangan menganggap public Postman collection memberi akses produksi. Gunakan credential sah dan hak akses spesifik. Jangan meminjam Organization ID pihak lain.
-- SATUSEHAT_ENABLED=false dan DEMO_MODE=true default. Tidak ada transaksi rujukan resmi atau akses rekam medis saat demo.
+- `SATUSEHAT_ENABLED=false` dan `DEMO_MODE=true` secara default. Tidak ada transaksi rujukan resmi atau akses rekam medis saat demo.
+- Deployment produksi saat ini memakai adapter serverless Vercel. Docker dan reverse proxy adalah jalur alternatif yang belum tervalidasi.
 - Adapter bertipe, timeout/retry bounded, token expiry dari response dan provenance field-level. Kegagalan upstream mempertahankan data lama dengan label stale; jangan memalsukan pembaruan/verifikasi.
 - Batasi body, validasi enum/range, redact log, gunakan request ID dan percayai forwarding header hanya dari proxy terdaftar.
 

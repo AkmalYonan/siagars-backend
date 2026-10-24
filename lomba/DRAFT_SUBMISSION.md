@@ -2,7 +2,7 @@
 
 Bahan untuk dokumen PDF First Draft Submission WIA (MIA 2026). Ini kerangka isi per halaman, bukan PDF jadi. Pindahkan ke PowerPoint/Google Slides/Canva lalu ekspor ke PDF.
 
-Sumber aturan: Guidebook WIA bagian J dan PPT Technical Meeting (slide "First Draft Submission"). Sumber isi: backend/PRD.md, backend/README.md, backend/docs/DECISIONS.md, siagars-v0.1/sources/Scope_MVP.md dan Teknis_Sistem.md.
+Sumber aturan: Guidebook WIA bagian J dan PPT Technical Meeting (slide "First Draft Submission"). Sumber isi versi berjalan: `backend/PRD.md`, `backend/README.md`, `backend/docs/DECISIONS.md`, dan `backend/docs/openapi.yaml`.
 
 ## Ketentuan berkas (dari dokumen panitia)
 
@@ -111,13 +111,14 @@ Isi yang didukung kode dan README backend:
 
 - Stack: Go 1.27.1, net/http ServeMux, MongoDB Atlas lewat go.mongodb.org/mongo-driver/v2 v2.9.2, bcrypt cost 12.
 - Arsitektur: handler HTTP, service (aturan bisnis), repository (MongoDB), domain (state machine, freshness, Haversine), adapter SATUSEHAT. Prefix `/api/v1`, JSON snake_case, timestamp RFC3339 UTC.
-- Endpoint (14 endpoint pada tabel PRD bagian 3; sumber kontrak `docs/openapi.yaml`, Swagger UI di `/docs` saat API berjalan):
+- Kontrak saat ini memiliki 15 operasi API. Sumber kontrak adalah `docs/openapi.yaml`; Swagger UI tersedia di `/docs` saat API berjalan:
 
 | Method | Path | Fungsi |
 |---|---|---|
 | GET | /health, /ready | liveness; readiness DB |
 | GET | /services | master layanan |
 | GET | /hospitals, /hospitals/{id} | pencarian/filter/pagination; detail |
+| GET | /hospitals/compare | bandingkan 2-3 RS |
 | POST | /referrals/lookup | tracking sintetis lewat body |
 | POST | /auth/login, /auth/logout | session operator |
 | GET | /auth/me, /auth/csrf | profil+RS izin; token CSRF |
@@ -151,13 +152,13 @@ Wajib minimal 2 halaman: landing page + 1 halaman lain.
 | 2 | Pilih salah satu: hasil pencarian / detail RS / lacak rujukan / operator | **[PLACEHOLDER: screenshot nyata]** |
 | 3 (opsional) | Swagger UI `/docs` untuk bagian API | **[PLACEHOLDER: screenshot nyata dari API lokal]** |
 
-Aturan: ambil screenshot dari aplikasi yang benar-benar berjalan; data simulasi harus terlihat berlabel; jangan menampilkan secret, email operator nyata, atau URL query berisi kode. Backend baru terbukti lewat smoke test HTTP lokal (README); bukti integrasi frontend ke backend belum ada.
+Aturan: ambil screenshot dari aplikasi yang benar-benar berjalan; data simulasi harus terlihat berlabel; jangan menampilkan secret, email operator nyata, atau URL query berisi kode. Backend sudah tersedia di Vercel dan lolos smoke test publik dasar; bukti integrasi frontend ke backend belum ada.
 
 ## Halaman 10 - Progres dan rencana
 
-Progres yang bisa dibuktikan (README backend, 23 Oktober 2026): baseline API Go + MongoDB Atlas, migration 001-002, seed idempotent, adapter MSI Sandbox, dokumentasi OpenAPI; gofmt, build, vet dan unit test lulus; suite integrasi lulus pada database tes sementara di Atlas.
+Progres yang bisa dibuktikan per 24 Oktober 2026: API Go + MongoDB Atlas, migration 001-003, seed idempotent, adapter MSI Sandbox, query pushdown, compare RS, benchmark pencarian, dokumentasi OpenAPI, dan deployment Vercel. Gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus.
 
-Belum terbukti dan harus tertulis jujur: E2E frontend-backend, benchmark kinerja, Docker, race detector, kurasi RS nyata, uji usability <60 detik, deployment publik. Status frontend **[ISI]**.
+Belum terbukti dan harus tertulis jujur: E2E frontend-backend, Docker, race detector, kurasi RS nyata, uji usability <60 detik, login/mutasi produksi, dan SATUSEHAT produksi. Status frontend **[ISI]**.
 
 Rencana dari Scope_MVP bagian 10: QA responsif/aksesibilitas 30 Oktober; freeze draft 31 Oktober; First Draft 1 November; review mentor 3-6 November; feedback 7 November; revisi 8-10 November; final 11 November.
 

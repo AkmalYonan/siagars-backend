@@ -1,6 +1,6 @@
 # SiagaRS Backend v0.1
 
-Backend Go untuk direktori rumah sakit pilot, provenance, tracking rujukan sintetis, dan operator. Acuan: [PRD.md](PRD.md), [AGENTS.md](AGENTS.md), dan dokumen sumber di ../output/siagars-v0.1/sources. Folder ini berdiri sendiri dan tidak mengubah frontend.
+Backend Go untuk direktori rumah sakit pilot, provenance, tracking rujukan sintetis, dan operator. Acuan: [PRD.md](PRD.md), [AGENTS.md](AGENTS.md), [keputusan implementasi](docs/DECISIONS.md), dan [kontrak OpenAPI](docs/openapi.yaml).
 
 ## Stack dan struktur
 
@@ -27,7 +27,7 @@ Isi `.env` di root project (salin dari `.env.example`; file ini git-ignored), la
 
 ~~~powershell
 go run .                  # muat .env lalu jalankan API di http://localhost:8080
-go run . migrate          # perintah manage juga tersedia: migrate | seed | operator | sync-satusehat
+go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat | curate
 ~~~
 
 `go run .` membaca `.env` tanpa menimpa variabel yang sudah di-set di terminal, jadi override sementara tetap bisa, misalnya `$env:SATUSEHAT_ENABLED='true'; $env:SATUSEHAT_KABKOTA='jabodetabek'; go run . sync-satusehat`. Log hanya mencatat jumlah variabel yang dimuat, bukan nilainya. `cmd/api` dan `cmd/manage` tetap tersedia dan sengaja tidak memuat `.env` (untuk container/produksi).
@@ -172,7 +172,7 @@ Seed memakai upsert `$setOnInsert` dan `$push` bersyarat dalam satu transaksi. P
 - has_available_beds=true hanya available>0, fresh dan non-simulation. Dengan seed simulasi, hasil filter ini memang kosong. false tidak memfilter.
 - Freshness: <1 jam fresh; 1..24 jam aging; >24 jam stale; null/future unknown. Threshold baseline tetap pada domain; belum menjadi setting environment.
 - Login maksimum 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. Limiter memory per instance (bounded 10.000 key). Retry-After 60 detik adalah interval coba ulang, bukan jaminan window sudah habis.
-- Tidak mempercayai X-Forwarded-For. Di balik proxy, rate limit memakai IP proxy; trusted proxy parsing harus ditambah sebelum deployment bersama proxy berskala besar.
+- `X-Forwarded-For` hanya dipercaya bila peer langsung cocok dengan `TRUSTED_PROXIES`. Nilai kosong mengabaikan header. Limiter tetap berada di memory setiap instance, sehingga deployment multi-instance memerlukan limiter bersama untuk perlindungan produksi.
 - Request context timeout10 detik; header5 detik; transport read/write15 detik. Tidak mencatat body, email, cookie, password, kode tracking, URL query atau raw DB error.
 - State machine dan pemeriksaan versi dijalankan saat row lock, status+history+audit satu transaksi.
 - Operator services/bed hanya dapat update item yang sudah ada pada RS scope. Data admin read juga dibatasi scope.
@@ -197,13 +197,13 @@ go test -v ./tests/integration
 
 Tes: seluruh pasangan transisi, freshness boundary, Haversine, null/0, filter AND/BPJS/bed, pagination, input invalid, Origin/CSRF/session, limiter, body limit dan DTO publik. Suite DB memeriksa migration/seed idempotent, rollback audit failure, dua concurrent update dengan versi sama, scope, expiry/revoke, bed constraint dan DTO joins.
 
-Status aktual setelah migrasi MongoDB (23 Okt 2026): gofmt, build, vet dan unit test lulus. Suite integrasi lulus terhadap Atlas (database tes sementara, sudah di-drop). `manage migrate` dan `manage seed` dijalankan dua kali ke database siagars di Atlas (idempotent), lalu smoke test HTTP lokal ke API yang terhubung Atlas: ready, services, hospitals (filter AND/BPJS), detail, lookup SR-DEMO-001, query tidak dikenal 422, login salah 401. Race detector tidak berjalan karena CGO nonaktif dan tidak ada GCC. Belum ada bukti E2E frontend, benchmark p95, Docker, maupun kurasi RS nyata.
+Status aktual 24 Okt 2026: gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus. Migration 001-003, seed idempotent, query pushdown, compare RS, trusted proxy, serta benchmark pencarian sudah tersedia. Race detector tidak berjalan karena CGO nonaktif dan tidak ada GCC. E2E frontend, Docker, dan kurasi RS nyata belum terbukti.
 
 Status fase SATUSEHAT MSI (23 Okt 2026): gofmt, build, vet dan seluruh unit test lulus, termasuk adapter OAuth/MSI dengan mock httptest dan workflow sync dengan fake source. Suite integrasi MongoDB (TestMongoTransactions dan TestSATUSEHATImport) lulus terhadap Atlas pada database tes terisolasi. Migration 002 sudah diterapkan ke database siagars. Live Sandbox Jabodetabek berhasil (lihat bagian Sinkronisasi SATUSEHAT).
 
 ## Handoff
 
-Must API baseline tersedia dalam kode; alur frontend tetap merupakan gate berikutnya. Jangan menyatakan deployment atau integrasi medis produksi siap dari hasil unit test. Migration 001_initial.json sudah diterapkan ke Atlas; perubahan berikutnya wajib file migration baru (002_...json), bukan mengedit 001. Deployment Vercel sudah berjalan dan lolos smoke test dasar (lihat `deploy/VERCEL.md`); login operator, mutasi, dan tes `qa/` terhadap produksi belum dijalankan. Deployment container (Docker) belum diuji pada mesin ini.
+Must API dan fitur Should backend tersedia dalam kode. Alur frontend tetap menjadi gate berikutnya. Jangan menyatakan integrasi medis produksi siap dari hasil pengujian demo. Migration 001-003 tidak boleh diedit; perubahan skema berikutnya wajib memakai migration baru. Deployment Vercel berjalan dan lolos smoke test dasar (lihat [deploy/VERCEL.md](deploy/VERCEL.md)); login operator, mutasi, dan tes `qa/` terhadap produksi belum dijalankan. Deployment container Docker belum diuji pada mesin ini.
 
 docs/fixtures.json berisi contoh sintetis deterministik untuk handoff frontend; bukan snapshot database yang sedang berjalan.
 ## Kurasi data RS (`curate`)
@@ -216,10 +216,10 @@ Pipeline untuk menambahkan fakta layanan/bed/BPJS dari sumber publik yang sah ke
 - Tanpa perubahan endpoint, enum, migration, OpenAPI, atau fixture.
 
 ~~~powershell
-$env:CURATE_FILE='data/curation/example.placeholder.json'; go run ./cmd/manage curate   # dry-run
+go run ./cmd/manage curate data/curation/example.placeholder.json   # dry-run; contoh placeholder akan ditolak untuk apply
 ~~~
 
-Argumen `curate <file> [--apply]` sudah didukung `seed.RunCurate`, tetapi `main.go` dan `cmd/manage` masih membatasi `len(os.Args)==2`, jadi sementara gunakan env `CURATE_FILE` / `CURATE_APPLY=true`. `go test ./seed` menguji validator dan dry-run contoh. `tests/integration/curate_test.go` (database temporer, perlu `TEST_MONGODB_URI`) menguji apply, idempotensi, dan non-overwrite.
+Argumen `curate <file> [--apply]` didukung oleh `go run .` dan `go run ./cmd/manage`. `CURATE_FILE` serta `CURATE_APPLY=true` tetap tersedia untuk otomasi berbasis environment. `go test ./seed` menguji validator dan dry-run. `tests/integration/curate_test.go` memerlukan `TEST_MONGODB_URI` dan menguji apply, idempotensi, serta non-overwrite pada database sementara.
 
 ## Perbandingan RS (compare)
 

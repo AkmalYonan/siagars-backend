@@ -87,7 +87,7 @@ Tes integrasi berbasis database bersifat opt-in lewat `TEST_MONGODB_URI` dan mem
 
 ## Progres saat ini
 
-Diisi sesuai bukti pada hari draft dibekukan. Status backend per 23 Oktober 2026 (dari backend/README.md):
+Diisi sesuai bukti pada hari draft dibekukan. Status backend per 24 Oktober 2026 (dari backend/README.md):
 
 - [x] REST API Go + MongoDB Atlas: pencarian RS (filter layanan AND, BPJS, wilayah, sort nama/jarak/kecocokan, pagination), detail, master layanan
 - [x] Provenance per item (asal data, waktu sumber, waktu sinkronisasi, verifikasi) dan kesegaran fresh/aging/stale/unknown
@@ -95,11 +95,14 @@ Diisi sesuai bukti pada hari draft dibekukan. Status backend per 23 Oktober 2026
 - [x] Auth operator (session, CSRF, scope RS) dan update status rujukan/layanan/bed dengan optimistic locking
 - [x] Migration, seed idempotent, dokumentasi OpenAPI
 - [x] Adapter SATUSEHAT MSI Sandbox read-only (teruji dengan mock dan live Sandbox Jabodetabek)
+- [x] Query pushdown MongoDB, index pencarian, compare 2-3 RS, dan benchmark pencarian
+- [x] Deployment backend publik di Vercel: `https://siagars-backend.vercel.app`
 - [ ] Frontend Next.js: **[ISI: landing, pencarian, detail, lacak rujukan, operator; centang hanya yang sudah berjalan]**
 - [ ] Uji end-to-end frontend dengan backend (belum ada bukti)
 - [ ] Kurasi data RS nyata, termasuk layanan/bed/BPJS (belum ada)
-- [ ] Benchmark kinerja, Docker Compose, race detector (belum teruji)
-- [ ] Deployment publik (belum ada)
+- [x] Benchmark kinerja pencarian backend
+- [ ] Docker Compose dan race detector (belum teruji)
+- [ ] Login operator, mutasi, dan suite `qa/` terhadap deployment produksi
 
 ## Sumber data dan batasan
 

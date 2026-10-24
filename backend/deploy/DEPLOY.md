@@ -23,7 +23,7 @@ Semua diberikan lewat environment proses/secret manager, bukan file di image.
 | SESSION_TTL_HOURS | default 8 |
 | DEMO_MODE | `true` (wajib) |
 | SATUSEHAT_ENABLED | `false` kecuali ada izin; hanya `SATUSEHAT_ENV=sandbox` diterima |
-| TRUSTED_PROXIES | (ditambah worker B) daftar IP/CIDR reverse proxy agar `X-Forwarded-For` hanya dipercaya dari proxy. Setel ke alamat proxy; kosongkan bila API diakses langsung. Lihat README/DECISIONS untuk format final |
+| TRUSTED_PROXIES | Daftar IP/CIDR reverse proxy, dipisah koma. Setel ke alamat peer proxy yang terlihat oleh container; kosongkan bila API diakses langsung |
 
 Cookie sesi: `HttpOnly`, `SameSite=Lax`, `Path=/api/v1`, `Secure` pada HTTPS. Jadi pastikan proxy mengirim `X-Forwarded-Proto: https` dan TLS berakhir di proxy. HTTP hanya untuk `APP_ENV=development`.
 
@@ -57,7 +57,7 @@ Healthcheck container memanggil `/api/v1/health` (liveness). Readiness (`/ready`
 - [ ] Uji asap: health, ready, login, CSRF, satu mutasi di database non-produksi.
 
 ## Rollback
-- **Aplikasi**: tag image per rilis; rollback = `docker compose up -d` dengan image tag sebelumnya (atau build ulang dari rilis sebelumnya). Perubahan skema selalu berupa migration bernomor baru yang kompatibel mundur; jangan edit 001/002.
+- **Aplikasi**: tag image per rilis; rollback = `docker compose up -d` dengan image tag sebelumnya (atau build ulang dari rilis sebelumnya). Perubahan skema selalu berupa migration bernomor baru yang kompatibel mundur; jangan edit 001-003.
 - **Skema/data**: tidak ada migration "down". Bila migration baru bermasalah, hentikan API, pulihkan dari backup/snapshot Atlas ke cluster atau database baru, uji, lalu arahkan `MONGODB_URI`/`MONGODB_DATABASE` ke sana. Jangan drop/reset database yang sedang dipakai.
 - **Proxy**: simpan konfigurasi proxy sebelumnya; reload dengan versi lama.
 
@@ -75,7 +75,7 @@ Healthcheck container memanggil `/api/v1/health` (liveness). Readiness (`/ready`
 - Deploy ke internet publik atau membuka port 8080/3000 ke publik.
 - Membaca, mencetak, mengirim, atau meng-commit `.env` dan `atlas-credentials.env`.
 - Menulis, mereset, atau men-drop database Atlas `siagars` di luar migrate/seed/operator yang terdokumentasi.
-- Mengedit migration 001/002 yang sudah diterapkan.
+- Mengedit migration 001-003 yang sudah tercatat.
 - Mengirim data ke SATUSEHAT, atau memakai SATUSEHAT production (ditolak oleh konfigurasi; hanya Sandbox read-only via `manage sync-satusehat`).
 - Memasukkan data pasien nyata atau data RS karangan sebagai data nyata.
 - Mengubah `DEMO_MODE`, endpoint, enum, atau makna `null` tanpa memperbarui `docs/openapi.yaml` dan `docs/fixtures.json`.

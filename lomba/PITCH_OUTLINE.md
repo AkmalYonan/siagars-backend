@@ -28,7 +28,7 @@ Wajib memuat (panitia): perkenalan anggota (nama dan peran), demo fitur utama we
 | 0:50-2:50 | Demo fitur utama | (1) cari RS dengan filter layanan dan BPJS, lihat peta/daftar; (2) buka detail: asal data, waktu sumber, kesegaran, null vs 0; (3) lacak kode demo SR-DEMO-001 dan lihat timeline; (4) login operator, ubah status rujukan, refresh pelacakan dan lihat event baru | rekam dari aplikasi nyata; tampilkan label simulasi; jangan menampilkan secret atau email nyata; kode SR-DEMO-001 adalah kode publik sintetis |
 | 2:50-3:30 | Data dan kejujuran sumber | 30 RS seed fiktif berlabel simulation; data MSI Sandbox 516 RS Jabodetabek read-only, belum punya layanan/bed/BPJS; tidak ada data pasien | sebut "Sandbox", bukan produksi |
 | 3:30-4:20 | Teknis singkat (nilai plus backend) | satu service Go, MongoDB Atlas, OpenAPI, optimistic locking, CSRF, adapter terpisah | Q&A panitia no. 34: backend adalah poin plus; tidak menjamin nilai |
-| 4:20-4:50 | Rencana pengembangan | kurasi 30-50 RS dengan minimal 10 profil lengkap (target Scope_MVP, belum tercapai); uji usability dengan pengguna nyata; pushdown query dan benchmark sebelum scale-up; akses SATUSEHAT yang sah bila tersedia | tandai sebagai rencana; ide AI discovery 500 RS belum masuk kontrak v0.1 (DECISIONS.md) |
+| 4:20-4:50 | Rencana pengembangan | kurasi 30-50 RS dengan minimal 10 profil lengkap (target Scope_MVP, belum tercapai); uji usability dengan pengguna nyata; optimasi lanjutan berdasarkan benchmark; akses SATUSEHAT yang sah bila tersedia | query pushdown dan benchmark awal sudah tersedia; tandai rencana lanjutan sebagai rencana; ide AI discovery 500 RS belum masuk kontrak v0.1 (DECISIONS.md) |
 | 4:50-5:00 | Penutup | nama produk, tautan repo/demo **[ISI jika sudah ada]** | total maksimal 5:00; targetkan 4:45 agar aman |
 
 Persiapan:
@@ -81,6 +81,6 @@ Persiapan:
 | Apakah ini rujukan resmi? | Bukan. State machine lokal untuk demo, tidak mengirim apa pun ke SATUSEHAT; rujukan resmi memakai Task/ServiceRequest/CarePlan/Encounter dan tidak diimplementasikan |
 | Bagaimana privasi data pasien? | Tidak ada data pasien, NIK atau diagnosis; kode tracking dan token session disimpan sebagai hash |
 | Apakah sudah diuji pengguna? | Belum; target <60 detik adalah target, uji usability belum dilakukan **[ISI bila sudah]** |
-| Apakah skalabel? | Belum diukur; pencarian saat ini memuat data di memory, perlu pushdown query dan benchmark |
+| Apakah skalabel? | Query dasar, filter, pengurutan nama, dan paginasi sudah dijalankan di MongoDB serta memiliki benchmark awal. `sort=distance|match` masih mengurutkan hasil tersaring di aplikasi; angka benchmark bukan SLA produksi. |
 | Mengapa bukan sekadar peta RS terdekat? | Pencarian berdasarkan kebutuhan fasilitas dan transparansi umur informasi (Scope_MVP) |
 | Apa kontribusi tiap anggota? | Radja: scope/riset/QA/dokumentasi/pitching; Tauriq: frontend dan integrasi; Akmal: backend. **[ISI: sesuaikan dengan kenyataan]** |

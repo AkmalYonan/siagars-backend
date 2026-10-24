@@ -1,6 +1,6 @@
 # Checklist Lomba - SiagaRS (WIA, MIA 2026)
 
-Disusun 24 Oktober 2026 dari empat PDF di folder GuideBook (Guidebook WIA, PPT Technical Meeting MIA 2026, Q&A MIA 2026, Mentoring Class) dan siagars-v0.1/sources/Scope_MVP.md. Aturan sudah dicocokkan ulang dengan teks PDF sebelum ditulis. Jika dokumen panitia berubah, panitia berhak memperbarui aturan dan akan mengumumkannya lewat email resmi atau website kompetisi (Guidebook, Syarat Umum); itu yang berlaku.
+Disusun 24 Oktober 2026 dari empat PDF di folder GuideBook (Guidebook WIA, PPT Technical Meeting MIA 2026, Q&A MIA 2026, Mentoring Class) dan scope berjalan di `backend/PRD.md`. Aturan sudah dicocokkan ulang dengan teks PDF sebelum ditulis. Jika dokumen panitia berubah, panitia berhak memperbarui aturan dan akan mengumumkannya lewat email resmi atau website kompetisi (Guidebook, Syarat Umum); itu yang berlaku.
 
 Catatan sumber: "Guidebook" = Guidebook WIA.pdf; "TM" = PPT Technical Meeting; "Q&A" = Q_A MIA 2026; "Mentoring" = [WIA] Mentoring Class.
 
