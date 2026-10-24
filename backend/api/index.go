@@ -4,10 +4,10 @@ package handler
 import (
 	"net/http"
 
-	"siagars/backend/internal/app"
+	"siagars/backend/serverless"
 )
 
 // Handler forwards every request to the shared API router.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	app.ServeHTTP(w, r)
+	serverless.ServeHTTP(w, r)
 }
