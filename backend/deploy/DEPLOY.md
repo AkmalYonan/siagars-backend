@@ -1,5 +1,7 @@
 # Deployment & operasional SiagaRS Backend
 
+> Deployment produksi yang **sedang berjalan** memakai Vercel + adapter serverless, bukan panduan di bawah ini. Lihat [`VERCEL.md`](VERCEL.md). Dokumen ini adalah jalur alternatif (Docker + reverse proxy); sejumlah poinnya (mis. larangan `0.0.0.0/0` dan `/docs` tidak publik) berbeda dari deployment Vercel dan deviasinya dicatat di VERCEL.md.
+
 Status: panduan dan contoh konfigurasi. **Belum teruji** di lingkungan nyata (Docker tidak tersedia saat dokumen ini disusun; `docker build`, `docker compose config` dan proxy belum dijalankan). Jangan deploy publik tanpa izin pemilik proyek. Proyek ini DEMO_MODE: data bersifat simulasi, bukan data RS/pasien nyata.
 
 ## Arsitektur

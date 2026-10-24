@@ -55,7 +55,8 @@ go test ./...
 - [x] Tracking rujukan sintetis dan auth operator
 - [x] Migrasi, seed idempotent, dokumentasi OpenAPI
 - [x] Adapter SATUSEHAT MSI Sandbox read-only
-- [ ] Deployment publik (sedang disiapkan: GitHub, lalu Vercel)
+- [x] Deployment produksi di Vercel dengan CI/CD dari GitHub: https://siagars-backend.vercel.app (smoke test dasar lulus; detail dan risiko di [`backend/deploy/VERCEL.md`](backend/deploy/VERCEL.md))
+- [ ] Uji login operator dan tes `qa/` terhadap produksi
 
 ## Keamanan
 

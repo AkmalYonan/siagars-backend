@@ -88,6 +88,10 @@ docker compose up -d api
 
 Password pada URI harus di-percent-encode jika mengandung karakter reserved URL. Tidak ada perintah reset/drop dalam workflow ini.
 
+## Produksi (Vercel)
+
+API produksi berjalan di https://siagars-backend.vercel.app lewat adapter serverless (`api/index.go`, `serverless/`, `vercel.json`) dan CI/CD dari GitHub (push ke `main` memicu deploy). Smoke test `health`, `ready`, `hospitals` dan `services` lulus pada 24 Okt 2026. Setup, env vars, pemecahan masalah, dan deviasi keamanan (Atlas `0.0.0.0/0`, `/docs` publik, rate limit per instance) ada di [`deploy/VERCEL.md`](deploy/VERCEL.md). Migrate, seed, dan pembuatan operator tetap dijalankan dari lokal.
+
 ## Operator lokal
 
 Tidak ada akun/password bawaan. Jalankan setelah seed, dengan email baru:
@@ -199,7 +203,7 @@ Status fase SATUSEHAT MSI (23 Okt 2026): gofmt, build, vet dan seluruh unit test
 
 ## Handoff
 
-Must API baseline tersedia dalam kode; alur frontend tetap merupakan gate berikutnya. Jangan menyatakan deployment atau integrasi medis produksi siap dari hasil unit test. Migration 001_initial.json sudah diterapkan ke Atlas; perubahan berikutnya wajib file migration baru (002_...json), bukan mengedit 001. Deployment/container belum diuji pada mesin ini.
+Must API baseline tersedia dalam kode; alur frontend tetap merupakan gate berikutnya. Jangan menyatakan deployment atau integrasi medis produksi siap dari hasil unit test. Migration 001_initial.json sudah diterapkan ke Atlas; perubahan berikutnya wajib file migration baru (002_...json), bukan mengedit 001. Deployment Vercel sudah berjalan dan lolos smoke test dasar (lihat `deploy/VERCEL.md`); login operator, mutasi, dan tes `qa/` terhadap produksi belum dijalankan. Deployment container (Docker) belum diuji pada mesin ini.
 
 docs/fixtures.json berisi contoh sintetis deterministik untuk handoff frontend; bukan snapshot database yang sedang berjalan.
 ## Kurasi data RS (`curate`)
