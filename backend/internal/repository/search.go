@@ -60,7 +60,7 @@ func searchPipeline(s service.Search, now time.Time) bson.A {
 	}
 	haystack := bson.D{{Key: "$toLower", Value: bson.D{{Key: "$concat", Value: bson.A{"$name", " ", name("_city"), " ", name("_province")}}}}}
 	return append(p, region("city_code", "_city"), region("province_code", "_province"),
-		bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$gte", Value: bson.A{bson.D{{Key: "$indexOfCP", Value: bson.A{haystack, strings.ToLower(s.Q)}}}, 0}}}}}}},
+		bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$gte", Value: bson.A{bson.D{{Key: "$indexOfCP", Value: bson.A{haystack, bson.D{{Key: "$literal", Value: strings.ToLower(s.Q)}}}}}, 0}}}}}}},
 		bson.D{{Key: "$unset", Value: bson.A{"_city", "_province"}}})
 }
 
@@ -166,4 +166,69 @@ func (m *Mongo) joinNames(ctx context.Context, docs []HospitalDoc) ([]domain.Hos
 		serviceNames[s.Slug] = s.Name
 	}
 	return hospitalDTOs(docs, names, serviceNames), nil
+}
+
+// HospitalByExternalID returns the one visible hospital whose upstream code (for SATUSEHAT, kode_satusehat)
+// equals external. A code shared by several namespaces is ambiguous and reported as not found.
+func (m *Mongo) HospitalByExternalID(ctx context.Context, external string) (domain.Hospital, error) {
+	docs, e := all[HospitalDoc](ctx, m.DB.Collection("hospitals"), bson.D{{Key: "external_id", Value: external}, {Key: "source_active", Value: bson.D{{Key: "$ne", Value: false}}}}, options.Find().SetLimit(2))
+	if e != nil {
+		return domain.Hospital{}, e
+	}
+	if len(docs) != 1 {
+		return domain.Hospital{}, ErrNotFound
+	}
+	hs, e := m.joinNames(ctx, docs)
+	if e != nil {
+		return domain.Hospital{}, e
+	}
+	return hs[0], nil
+}
+
+// Regions lists every province and city exactly as stored, so clients never guess codes.
+func (m *Mongo) Regions(ctx context.Context) ([]domain.Region, error) {
+	docs, e := all[struct {
+		Code   string  `bson:"_id"`
+		Name   string  `bson:"name"`
+		Kind   string  `bson:"kind"`
+		Parent *string `bson:"parent_code"`
+	}](ctx, m.DB.Collection("regions"), bson.D{}, options.Find().SetSort(bson.D{{Key: "kind", Value: -1}, {Key: "name", Value: 1}, {Key: "_id", Value: 1}}))
+	if e != nil {
+		return nil, e
+	}
+	out := make([]domain.Region, 0, len(docs))
+	for _, d := range docs {
+		out = append(out, domain.Region{Code: d.Code, Name: d.Name, Kind: d.Kind, ParentCode: d.Parent})
+	}
+	return out, nil
+}
+
+// SuggestHospitals returns up to limit hospitals whose name contains q (ASCII case-insensitive),
+// earliest match first. q is passed as a $literal so it can never be read as an operator or field path.
+func (m *Mongo) SuggestHospitals(ctx context.Context, q, dataset string, limit int) ([]domain.Suggestion, error) {
+	match := hospitalMatch(service.Search{Dataset: dataset}, time.Time{})
+	pos := bson.D{{Key: "$indexOfCP", Value: bson.A{bson.D{{Key: "$toLower", Value: "$name"}}, bson.D{{Key: "$literal", Value: strings.ToLower(q)}}}}}
+	cursor, e := m.DB.Collection("hospitals").Aggregate(ctx, bson.A{
+		bson.D{{Key: "$match", Value: match}},
+		bson.D{{Key: "$addFields", Value: bson.D{{Key: "_pos", Value: pos}, {Key: "_name_key", Value: bson.D{{Key: "$toLower", Value: "$name"}}}}}},
+		bson.D{{Key: "$match", Value: bson.D{{Key: "_pos", Value: bson.D{{Key: "$gte", Value: 0}}}}}},
+		bson.D{{Key: "$sort", Value: bson.D{{Key: "_pos", Value: 1}, {Key: "_name_key", Value: 1}, {Key: "_id", Value: 1}}}},
+		bson.D{{Key: "$limit", Value: int64(limit)}},
+	})
+	if e != nil {
+		return nil, e
+	}
+	var docs []HospitalDoc
+	if e = cursor.All(ctx, &docs); e != nil {
+		return nil, e
+	}
+	hs, e := m.joinNames(ctx, docs)
+	if e != nil {
+		return nil, e
+	}
+	out := make([]domain.Suggestion, 0, len(hs))
+	for _, h := range hs {
+		out = append(out, domain.Suggestion{ID: h.ID, ExternalID: h.ExternalID, Name: h.Name, CityName: h.CityName, DataOrigin: h.DataOrigin})
+	}
+	return out, nil
 }

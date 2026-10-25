@@ -347,7 +347,7 @@ func TestCompareTwoToThreeUniqueIDs(t *testing.T) {
 	}
 	for name, ids := range map[string]string{
 		"satu ID": hid(1), "empat ID": hid(1) + "," + hid(2) + "," + hid(3) + "," + hid(4), "duplikat": hid(1) + "," + hid(1),
-		"bukan UUID": hid(1) + ",abc", "spasi": hid(1) + ",%20" + hid(2), "kosong": "",
+		"bukan UUID": hid(1) + ",bad%24id", "spasi": hid(1) + ",%20" + hid(2), "kosong": "",
 	} {
 		if code, body := get(ids); code != 422 || errorCode(t, body) != "validation_error" {
 			t.Errorf("%s: %d %v", name, code, body)

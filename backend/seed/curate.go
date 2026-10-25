@@ -25,7 +25,7 @@ const MaxCurationFile = 1 << 20
 var (
 	curationSlug     = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	curationBedKinds = []string{"icu", "nicu", "picu", "general"}
-	curationSvcSlugs = []string{"icu", "nicu", "picu", "igd-24h", "ambulance"}
+	curationSvcSlugs = []string{"icu", "nicu", "picu", "igd-24h", "ambulance", "rawat-inap"}
 )
 
 // CurationFile is the JSON form of a curation file. Unknown fields are rejected, so
@@ -71,6 +71,9 @@ type CuratedHospital struct {
 	SourceNamespace string
 	Name            string
 	BPJS            *bool
+	// SourceURL/SourceUpdatedAt are the record-level source; they become the BPJS provenance.
+	SourceURL       string
+	SourceUpdatedAt time.Time
 	Services        []CuratedService
 	Beds            []CuratedBed
 }
@@ -293,7 +296,7 @@ func ValidateCuration(records []CurationRecord, now time.Time) ([]CuratedHospita
 		if ph {
 			warn("source_url", "host placeholder; --apply akan menolak")
 		}
-		c := CuratedHospital{ExternalID: id, SourceNamespace: ns, Name: strings.TrimSpace(r.Name), BPJS: r.BPJS}
+		c := CuratedHospital{ExternalID: id, SourceNamespace: ns, Name: strings.TrimSpace(r.Name), BPJS: r.BPJS, SourceURL: src, SourceUpdatedAt: at}
 		svc := map[string]bool{}
 		for _, s := range r.Services {
 			slug := strings.TrimSpace(s.Slug)

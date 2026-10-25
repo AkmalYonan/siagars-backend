@@ -66,7 +66,7 @@ func ApplyCuration(ctx context.Context, db *mongo.Database, records []CuratedHos
 			continue
 		}
 		if r.BPJS != nil {
-			res, e := hospitals.UpdateOne(ctx, bson.D{{Key: "_id", Value: h.ID}, {Key: "bpjs", Value: nil}}, bson.D{{Key: "$set", Value: bson.D{{Key: "bpjs", Value: *r.BPJS}}}})
+			res, e := hospitals.UpdateOne(ctx, bson.D{{Key: "_id", Value: h.ID}, {Key: "bpjs", Value: nil}}, bson.D{{Key: "$set", Value: bson.D{{Key: "bpjs", Value: *r.BPJS}, {Key: "bpjs_source_url", Value: r.SourceURL}, {Key: "bpjs_source_updated_at", Value: r.SourceUpdatedAt.UTC()}}}})
 			if e != nil {
 				return out, e
 			}

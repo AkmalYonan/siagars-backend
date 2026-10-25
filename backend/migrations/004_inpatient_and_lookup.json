@@ -1,0 +1,5 @@
+{"commands": [
+ {"update": "services", "updates": [{"q": {"_id": "rawat-inap"}, "u": {"$setOnInsert": {"name": "Rawat Inap", "category": "inpatient"}}, "upsert": true}]},
+ {"createIndexes": "hospitals", "indexes": [
+  {"key": {"external_id": 1}, "name": "hospitals_external_id_idx", "partialFilterExpression": {"external_id": {"$type": "string"}}}]}
+]}

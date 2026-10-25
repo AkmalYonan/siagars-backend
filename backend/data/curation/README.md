@@ -33,10 +33,10 @@ JSON: `{"schema_version":1,"hospitals":[...]}`. CSV: satu RS per baris, kolom `s
 | `external_id` | Wajib. Kode SATUSEHAT MSI RS yang **sudah ada** di database (hasil `sync-satusehat`). Tanpa spasi. |
 | `source_namespace` | Opsional, default `satusehat:msi:sandbox`. |
 | `name` | Opsional tetapi dianjurkan. Jika ada dan tidak sama dengan nama di database, RS dilewati (jaring pengaman salah ID). |
-| `bpjs` | `true`, `false`, atau null/kosong. Hanya mengisi jika di database masih null. |
+| `bpjs` | `true`, `false`, atau null/kosong. Hanya mengisi jika di database masih null. Sumber dan waktunya (`source_url`, `source_updated_at` pada record) disimpan sebagai `bpjs_source_url` / `bpjs_source_updated_at` dan tampil di API. |
 | `source_url` | Wajib, `https://`, halaman publik tempat fakta dibaca. Bisa ditimpa per layanan/bed (JSON). |
 | `source_updated_at` | Wajib, RFC3339 UTC (`2026-10-20T08:00:00Z`), **waktu yang tertulis di sumber**, bukan waktu Anda menyalin. Tidak boleh di masa depan. Bisa ditimpa per layanan/bed. |
-| `services[]` | `slug` salah satu master layanan (`icu`, `nicu`, `picu`, `igd-24h`, `ambulance`), `status` `available\|limited\|unavailable\|unknown`. |
+| `services[]` | `slug` salah satu master layanan (`icu`, `nicu`, `picu`, `igd-24h`, `ambulance`, `rawat-inap`), `status` `available\|limited\|unavailable\|unknown`. |
 | `beds[]` | `category` `icu\|nicu\|picu\|general`, `total` dan `available` bilangan bulat >= 0 atau null; `available <= total` bila keduanya diisi. Entri dengan keduanya kosong ditolak: hapus saja. |
 
 `data_origin` dan `verified_at` **bukan input**: berkas yang memuatnya ditolak. Validator selalu menetapkan `data_origin=curated` dan tidak pernah mengisi `verified_at`.

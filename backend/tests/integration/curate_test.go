@@ -32,7 +32,7 @@ func TestCurateApply(t *testing.T) {
 	zero, nine := 0, 9
 	yes := true
 	rec := func(bpjs *bool) []seed.CuratedHospital {
-		return []seed.CuratedHospital{{ExternalID: ext, SourceNamespace: ns, Name: name, BPJS: bpjs,
+		return []seed.CuratedHospital{{ExternalID: ext, SourceNamespace: ns, Name: name, BPJS: bpjs, SourceURL: src, SourceUpdatedAt: srcAt,
 			Services: []seed.CuratedService{{Slug: "icu", Status: "available", SourceURL: src, SourceUpdatedAt: srcAt}, {Slug: "nicu", Status: "unknown", SourceURL: src, SourceUpdatedAt: srcAt}},
 			Beds:     []seed.CuratedBed{{Category: "icu", Total: &nine, Available: &zero, SourceURL: src, SourceUpdatedAt: srcAt}, {Category: "nicu", Total: &nine, SourceURL: src, SourceUpdatedAt: srcAt}}}}
 	}
@@ -46,6 +46,10 @@ func TestCurateApply(t *testing.T) {
 	}
 	if got.DataOrigin != "satusehat_sandbox" || got.VerifiedAt != nil || got.BPJS == nil || !*got.BPJS {
 		t.Fatalf("hospital-level fields: %+v", got.ProvenanceDoc)
+	}
+	// BPJS carries its own dated source, separate from the hospital's provenance.
+	if got.BPJSSourceURL == nil || *got.BPJSSourceURL != src || got.BPJSSourceUpdatedAt == nil || !got.BPJSSourceUpdatedAt.Equal(srcAt) {
+		t.Fatalf("bpjs provenance: %v %v", got.BPJSSourceURL, got.BPJSSourceUpdatedAt)
 	}
 	if icu := got.Services[0]; icu.Status != "limited" || icu.Version != 3 || icu.DataOrigin != "simulation" {
 		t.Fatalf("operator update overwritten: %+v", icu)

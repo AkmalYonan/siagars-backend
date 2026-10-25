@@ -13,7 +13,7 @@ Instruksi untuk coding agent di repository backend Go. Versi kerja V0.1 diperbar
 
 - `docs/openapi.yaml` adalah sumber kontrak saat implementasi dimulai; sertakan contoh sukses/galat dan enum.
 - Prefix `/api/v1`, JSON snake_case, UUID opaque, RFC3339 UTC. FE menggunakan snapshot versi yang sama.
-- API memiliki 15 operasi: health/readiness; layanan; daftar, detail, dan compare RS; lookup tracking; auth; serta operasi admin. `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
+- API memiliki 19 operasi: health/readiness; layanan; wilayah; daftar, detail, compare, dan autocomplete RS; lookup tracking; auth; serta operasi admin (referral, daftar/detail RS dalam scope, update layanan/bed). `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
 - Jangan mengubah endpoint, enum, pagination atau makna null tanpa memperbarui OpenAPI, fixture dan koordinasi frontend.
 - `services` AND; limit default 20/max50; parameter unknown 422. Jarak Haversine garis lurus, bukan ETA atau ukuran kualitas klinis.
 - Unknown = null/status unknown. Bed 0 bukan unknown. Freshness terpisah dari origin/verifikasi dan dihitung berdasarkan source_updated_at, bukan synced_at.

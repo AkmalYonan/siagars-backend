@@ -137,6 +137,7 @@ func (m *Mongo) UpsertSATUSEHATHospitals(ctx context.Context, items []domain.Hos
 			{Key: "data_origin", Value: "satusehat_sandbox"}, {Key: "source_active", Value: h.SourceActive}, {Key: "source_status", Value: nullable(h.SourceStatus)},
 			{Key: "facility_code", Value: nullable(h.FacilityCode)}, {Key: "facility_type_code", Value: nullable(h.FacilityTypeCode)},
 			{Key: "facility_subtype", Value: nullable(h.FacilitySubtype)}, {Key: "facility_class", Value: nullable(h.FacilityClass)},
+			{Key: "facility_subtype_name", Value: nullable(h.FacilitySubtypeName)}, {Key: "facility_class_name", Value: nullable(h.FacilityClassName)}, {Key: "operational", Value: h.Operational},
 			{Key: "source_hash", Value: hash}, {Key: "synced_at", Value: at}, {Key: "last_seen_at", Value: at},
 		}
 		// MSI has no per-record update timestamp and no verification evidence, so these stay null.

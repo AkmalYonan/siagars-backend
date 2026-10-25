@@ -1,3 +1,3 @@
-external_id,source_namespace,name,bpjs,source_url,source_updated_at,svc_icu,svc_nicu,svc_picu,svc_igd-24h,svc_ambulance,bed_icu_total,bed_icu_available,bed_nicu_total,bed_nicu_available,bed_picu_total,bed_picu_available,bed_general_total,bed_general_available
-PLACEHOLDER-RS-0001,,RS Contoh Fiktif Satu,true,https://sumber-fiktif.invalid/profil/rs-0001,2026-10-20T08:00:00Z,available,,,limited,,8,0,,,,,40,
-PLACEHOLDER-RS-0002,,,,https://sumber-fiktif.invalid/profil/rs-0002,2026-10-21T02:30:00Z,,,,,unavailable,,,,,,,,
+external_id,source_namespace,name,bpjs,source_url,source_updated_at,svc_icu,svc_nicu,svc_picu,svc_igd-24h,svc_ambulance,svc_rawat-inap,bed_icu_total,bed_icu_available,bed_nicu_total,bed_nicu_available,bed_picu_total,bed_picu_available,bed_general_total,bed_general_available
+PLACEHOLDER-RS-0001,,RS Contoh Fiktif Satu,true,https://sumber-fiktif.invalid/profil/rs-0001,2026-10-20T08:00:00Z,available,,,limited,,,8,0,,,,,40,
+PLACEHOLDER-RS-0002,,,,https://sumber-fiktif.invalid/profil/rs-0002,2026-10-21T02:30:00Z,,,,,unavailable,,,,,,,,,

@@ -256,7 +256,7 @@ func ParseCompare(v url.Values, validID func(string) bool) ([]string, error) {
 	seen := map[string]bool{}
 	for _, id := range ids {
 		if !validID(id) {
-			return nil, fmt.Errorf("ids memuat ID yang bukan UUID valid")
+			return nil, fmt.Errorf("ids memuat ID yang bukan UUID valid atau kode fasyankes")
 		}
 		if seen[id] {
 			return nil, fmt.Errorf("ids tidak boleh memuat ID duplikat")
@@ -264,4 +264,39 @@ func ParseCompare(v url.Values, validID func(string) bool) ([]string, error) {
 		seen[id] = true
 	}
 	return ids, nil
+}
+
+// Suggest is a validated GET /hospitals/suggest query.
+type Suggest struct {
+	Q, Dataset string
+	Limit      int
+}
+
+// ParseSuggest accepts q (1..100 characters, required), dataset (real|simulation|all, default real)
+// and limit (1..20, default 10). Unknown, empty or repeated parameters are rejected.
+func ParseSuggest(v url.Values) (Suggest, error) {
+	s := Suggest{Dataset: "real", Limit: 10}
+	for k, values := range v {
+		if (k != "q" && k != "dataset" && k != "limit") || len(values) != 1 || values[0] == "" {
+			return s, fmt.Errorf("parameter tidak didukung, kosong atau berulang: %s", k)
+		}
+	}
+	s.Q = strings.TrimSpace(v.Get("q"))
+	if s.Q == "" || utf8.RuneCountInString(s.Q) > 100 {
+		return s, fmt.Errorf("q wajib diisi, maksimal 100 karakter")
+	}
+	if x := v.Get("dataset"); x != "" {
+		if x != "real" && x != "simulation" && x != "all" {
+			return s, fmt.Errorf("dataset harus real, simulation atau all")
+		}
+		s.Dataset = x
+	}
+	if x := v.Get("limit"); x != "" {
+		n, e := strconv.Atoi(x)
+		if e != nil || n < 1 || n > 20 {
+			return s, fmt.Errorf("limit harus 1 sampai 20")
+		}
+		s.Limit = n
+	}
+	return s, nil
 }

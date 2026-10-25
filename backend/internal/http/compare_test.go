@@ -84,7 +84,7 @@ func TestCompareHandlerErrors(t *testing.T) {
 		"satu":              {"?ids=" + cmpSim, 422},
 		"empat":             {"?ids=" + cmpSim + "," + cmpReal + "," + cmpBare + "," + cmpGone, 422},
 		"duplikat":          {"?ids=" + cmpSim + "," + cmpSim, 422},
-		"bukan uuid":        {"?ids=" + cmpSim + ",abc", 422},
+		"bukan uuid":        {"?ids=" + cmpSim + ",bad%24id", 422},
 		"kapital":           {"?ids=" + cmpSim + "," + strings.ToUpper("abcdef00-0000-4000-8000-000000000001"), 422},
 		"parameter lain":    {"?ids=" + cmpSim + "," + cmpReal + "&dataset=all", 422},
 		"ids berulang":      {"?ids=" + cmpSim + "," + cmpReal + "&ids=" + cmpBare, 422},

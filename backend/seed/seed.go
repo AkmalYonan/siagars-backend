@@ -56,7 +56,7 @@ func apply(ctx context.Context, db *mongo.Database) error {
 	if _, e := db.Collection("regions").BulkWrite(ctx, models, ordered); e != nil {
 		return e
 	}
-	masters := [][3]string{{"icu", "ICU", "intensive"}, {"nicu", "NICU", "intensive"}, {"picu", "PICU", "intensive"}, {"igd-24h", "IGD 24 Jam", "emergency"}, {"ambulance", "Ambulans", "transport"}}
+	masters := [][3]string{{"icu", "ICU", "intensive"}, {"nicu", "NICU", "intensive"}, {"picu", "PICU", "intensive"}, {"igd-24h", "IGD 24 Jam", "emergency"}, {"ambulance", "Ambulans", "transport"}, {"rawat-inap", "Rawat Inap", "inpatient"}}
 	models = []mongo.WriteModel{}
 	for _, s := range masters {
 		models = append(models, insertOnly(s[0], bson.D{{Key: "name", Value: s[1]}, {Key: "category", Value: s[2]}}))

@@ -76,6 +76,24 @@ func Map(f MSIFacility, namespace string, syncedAt time.Time) (domain.HospitalIm
 		// Only an explicit status_aktif=false deactivates a facility.
 		SourceActive: !f.Active.Valid || f.Active.Value,
 		SourceStatus: clean(f.FacilityStatus), FacilityCode: clean(f.FacilityCode), FacilityTypeCode: code(f.FacilityType),
-		FacilitySubtype: code(f.Subtype), FacilityClass: code(f.FacilityClass), SyncedAt: syncedAt.UTC().Truncate(time.Millisecond),
+		FacilitySubtype: code(f.Subtype), FacilityClass: code(f.FacilityClass), FacilitySubtypeName: codedName(f.Subtype), FacilityClassName: codedName(f.FacilityClass),
+		Operational: operational(f.Operational), SyncedAt: syncedAt.UTC().Truncate(time.Millisecond),
 	}, "", true
+}
+
+// codedName returns the display name of a coded value, or "" when absent.
+func codedName(v *MSICodedValue) string {
+	if v == nil {
+		return ""
+	}
+	return clean(v.Name)
+}
+
+// operational keeps an absent flag as nil (unknown) rather than false.
+func operational(f Flag) *bool {
+	if !f.Valid {
+		return nil
+	}
+	v := f.Value
+	return &v
 }

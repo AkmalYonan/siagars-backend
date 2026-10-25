@@ -46,7 +46,27 @@
           "freshness": "fresh",
           "version": 1
         }
-      ]
+      ],
+      "external_id": null,
+      "source_namespace": null,
+      "bpjs_source_url": null,
+      "bpjs_source_updated_at": null,
+      "facility_class": null,
+      "facility_subtype": null,
+      "operational": null,
+      "facility_summary": {
+        "icu": "unknown",
+        "nicu": "available",
+        "picu": "unknown",
+        "rawat_inap": "unknown",
+        "bpjs": null,
+        "inpatient_beds": {
+          "total": null,
+          "available": null,
+          "freshness": "unknown"
+        },
+        "last_source_updated_at": "2026-10-23T08:00:00Z"
+      }
     },
     "meta": {
       "as_of": "2026-10-23T08:20:00Z"
@@ -100,7 +120,27 @@
             "freshness": "fresh",
             "version": 1
           }
-        ]
+        ],
+        "external_id": null,
+        "source_namespace": null,
+        "bpjs_source_url": null,
+        "bpjs_source_updated_at": null,
+        "facility_class": null,
+        "facility_subtype": null,
+        "operational": null,
+        "facility_summary": {
+          "icu": "unknown",
+          "nicu": "available",
+          "picu": "unknown",
+          "rawat_inap": "unknown",
+          "bpjs": null,
+          "inpatient_beds": {
+            "total": null,
+            "available": null,
+            "freshness": "unknown"
+          },
+          "last_source_updated_at": "2026-10-23T08:00:00Z"
+        }
       }
     ],
     "meta": {
@@ -163,7 +203,27 @@
             "freshness": "fresh",
             "version": 1
           }
-        ]
+        ],
+        "external_id": null,
+        "source_namespace": null,
+        "bpjs_source_url": null,
+        "bpjs_source_updated_at": null,
+        "facility_class": null,
+        "facility_subtype": null,
+        "operational": null,
+        "facility_summary": {
+          "icu": "unknown",
+          "nicu": "available",
+          "picu": "unknown",
+          "rawat_inap": "unknown",
+          "bpjs": null,
+          "inpatient_beds": {
+            "total": null,
+            "available": null,
+            "freshness": "unknown"
+          },
+          "last_source_updated_at": "2026-10-23T08:00:00Z"
+        }
       },
       "updated_at": "2026-10-23T08:00:00Z",
       "history": [
@@ -205,7 +265,33 @@
         "verified_at": null,
         "freshness": "unknown",
         "services": [],
-        "beds": []
+        "beds": [],
+        "external_id": "1000000001",
+        "source_namespace": "satusehat:msi:sandbox",
+        "bpjs_source_url": null,
+        "bpjs_source_updated_at": null,
+        "facility_class": {
+          "code": "B",
+          "name": "Kelas B"
+        },
+        "facility_subtype": {
+          "code": "1041",
+          "name": "RSU"
+        },
+        "operational": true,
+        "facility_summary": {
+          "icu": "unknown",
+          "nicu": "unknown",
+          "picu": "unknown",
+          "rawat_inap": "unknown",
+          "bpjs": null,
+          "inpatient_beds": {
+            "total": null,
+            "available": null,
+            "freshness": "unknown"
+          },
+          "last_source_updated_at": null
+        }
       },
       {
         "id": "10000000-0000-4000-8000-000000000001",
@@ -253,7 +339,27 @@
             "freshness": "fresh",
             "version": 1
           }
-        ]
+        ],
+        "external_id": null,
+        "source_namespace": null,
+        "bpjs_source_url": null,
+        "bpjs_source_updated_at": null,
+        "facility_class": null,
+        "facility_subtype": null,
+        "operational": null,
+        "facility_summary": {
+          "icu": "unknown",
+          "nicu": "available",
+          "picu": "unknown",
+          "rawat_inap": "unknown",
+          "bpjs": null,
+          "inpatient_beds": {
+            "total": null,
+            "available": null,
+            "freshness": "unknown"
+          },
+          "last_source_updated_at": "2026-10-23T08:00:00Z"
+        }
       }
     ],
     "meta": {

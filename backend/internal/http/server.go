@@ -19,6 +19,7 @@ import (
 	"siagars/backend/internal/domain"
 	"siagars/backend/internal/repository"
 	"siagars/backend/internal/service"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -47,6 +48,17 @@ type Searcher interface {
 type HospitalReader interface {
 	Hospital(context.Context, string) (domain.Hospital, error)
 }
+
+// ExternalReader resolves a hospital by its upstream code (SATUSEHAT kode_satusehat).
+type ExternalReader interface {
+	HospitalByExternalID(context.Context, string) (domain.Hospital, error)
+}
+
+// Directory serves the region master and name suggestions; stores without it answer 501.
+type Directory interface {
+	Regions(context.Context) ([]domain.Region, error)
+	SuggestHospitals(ctx context.Context, q, dataset string, limit int) ([]domain.Suggestion, error)
+}
 type Server struct {
 	repo  Store
 	cfg   config.Config
@@ -66,14 +78,14 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 		method, path string
 		handler      http.HandlerFunc
 	}{
-		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/{id}", s.hospital},
+		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
 		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
-		{"GET", "/admin/referrals", s.referrals}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
+		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
 	}
 	for _, route := range routes {
 		path := "/api/v1" + route.path
 		mux.HandleFunc(route.method+" "+path, route.handler)
-		if route.path == "/hospitals/compare" {
+		if route.path == "/hospitals/compare" || route.path == "/hospitals/suggest" {
 			// An all-methods fallback here would conflict with GET /hospitals/{id}; other methods on this
 			// path already reach the {id} fallback, which answers 405 with Allow: GET.
 			continue
@@ -182,6 +194,8 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Request-ID", id)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		rw := &recorder{ResponseWriter: w}
 		defer func() {
 			if recover() != nil {
@@ -305,6 +319,46 @@ func (s *Server) hospitalByID(ctx context.Context, id string) (domain.Hospital, 
 	}
 	return domain.Hospital{}, repository.ErrNotFound
 }
+
+// validExternalCode matches upstream facility codes such as SATUSEHAT kode_satusehat. A 36-character
+// dashed token is UUID-shaped and must then be a valid lowercase UUID, so uppercase UUIDs stay rejected.
+func validExternalCode(s string) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '-' || c == '_') {
+			return false
+		}
+	}
+	return len(s) != 36 || s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-'
+}
+
+// validHospitalRef accepts a hospital UUID or an upstream facility code.
+func validHospitalRef(s string) bool { return validUUID(s) || validExternalCode(s) }
+
+// hospitalByRef resolves a UUID or an upstream facility code to a visible hospital.
+func (s *Server) hospitalByRef(ctx context.Context, ref string) (domain.Hospital, error) {
+	if validUUID(ref) {
+		return s.hospitalByID(ctx, ref)
+	}
+	if reader, yes := s.repo.(ExternalReader); yes {
+		h, e := reader.HospitalByExternalID(ctx, ref)
+		h.Refresh(time.Now().UTC())
+		return h, e
+	}
+	hs, e := s.repo.Hospitals(ctx)
+	if e != nil {
+		return domain.Hospital{}, e
+	}
+	for _, h := range hs {
+		if h.ExternalID != nil && *h.ExternalID == ref {
+			h.Refresh(time.Now().UTC())
+			return h, nil
+		}
+	}
+	return domain.Hospital{}, repository.ErrNotFound
+}
 func (s *Server) findHospital(w http.ResponseWriter, r *http.Request, id string) (domain.Hospital, bool) {
 	if !validUUID(id) {
 		fail(w, r, 404, "not_found", "Rumah sakit tidak ditemukan")
@@ -322,7 +376,18 @@ func (s *Server) findHospital(w http.ResponseWriter, r *http.Request, id string)
 	return h, true
 }
 func (s *Server) hospital(w http.ResponseWriter, r *http.Request) {
-	if h, found := s.findHospital(w, r, r.PathValue("id")); found {
+	ref := r.PathValue("id")
+	if !validHospitalRef(ref) {
+		fail(w, r, 404, "not_found", "Rumah sakit tidak ditemukan")
+		return
+	}
+	h, e := s.hospitalByRef(r.Context(), ref)
+	switch {
+	case errors.Is(e, repository.ErrNotFound):
+		fail(w, r, 404, "not_found", "Rumah sakit tidak ditemukan")
+	case e != nil:
+		s.dbError(w, r, e)
+	default:
 		send(w, 200, map[string]any{"data": h, "meta": map[string]any{"as_of": time.Now().UTC()}})
 	}
 }
@@ -331,22 +396,28 @@ func (s *Server) hospital(w http.ResponseWriter, r *http.Request) {
 // nothing: if any ID is unknown the response is 404 naming the missing IDs, so a partial result is
 // never mistaken for a complete comparison.
 func (s *Server) compare(w http.ResponseWriter, r *http.Request) {
-	ids, e := service.ParseCompare(r.URL.Query(), validUUID)
+	ids, e := service.ParseCompare(r.URL.Query(), validHospitalRef)
 	if e != nil {
 		fail(w, r, 422, "validation_error", e.Error())
 		return
 	}
 	out := make([]domain.Hospital, 0, len(ids))
 	var missing []string
+	resolved := map[string]bool{}
 	for _, id := range ids {
-		h, e := s.hospitalByID(r.Context(), id)
+		h, e := s.hospitalByRef(r.Context(), id)
 		switch {
 		case errors.Is(e, repository.ErrNotFound):
 			missing = append(missing, id)
 		case e != nil:
 			s.dbError(w, r, e)
 			return
+		case resolved[h.ID]:
+			// A UUID and a facility code naming the same hospital would compare it with itself.
+			fail(w, r, 422, "validation_error", "ids tidak boleh memuat ID duplikat")
+			return
 		default:
+			resolved[h.ID] = true
 			out = append(out, h)
 		}
 	}
@@ -355,6 +426,113 @@ func (s *Server) compare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	send(w, 200, map[string]any{"data": out, "meta": map[string]any{"as_of": time.Now().UTC(), "count": len(out)}})
+}
+func (s *Server) regions(w http.ResponseWriter, r *http.Request) {
+	if len(r.URL.Query()) > 0 {
+		fail(w, r, 422, "validation_error", "Parameter tidak didukung")
+		return
+	}
+	dir, yes := s.repo.(Directory)
+	if !yes {
+		fail(w, r, 501, "not_implemented", "Fitur belum tersedia")
+		return
+	}
+	regions, e := dir.Regions(r.Context())
+	if e != nil {
+		s.dbError(w, r, e)
+		return
+	}
+	type city struct {
+		Code string `json:"code"`
+		Name string `json:"name"`
+	}
+	type province struct {
+		Code   string `json:"code"`
+		Name   string `json:"name"`
+		Cities []city `json:"cities"`
+	}
+	out, index := []*province{}, map[string]*province{}
+	for _, x := range regions {
+		if x.Kind == "province" {
+			p := &province{Code: x.Code, Name: x.Name, Cities: []city{}}
+			index[x.Code] = p
+			out = append(out, p)
+		}
+	}
+	for _, x := range regions {
+		if x.Kind != "city" || x.ParentCode == nil {
+			continue
+		}
+		if p := index[*x.ParentCode]; p != nil {
+			p.Cities = append(p.Cities, city{x.Code, x.Name})
+		}
+	}
+	send(w, 200, map[string]any{"data": out, "meta": map[string]any{"count": len(out)}})
+}
+func (s *Server) suggest(w http.ResponseWriter, r *http.Request) {
+	q, e := service.ParseSuggest(r.URL.Query())
+	if e != nil {
+		fail(w, r, 422, "validation_error", e.Error())
+		return
+	}
+	dir, yes := s.repo.(Directory)
+	if !yes {
+		fail(w, r, 501, "not_implemented", "Fitur belum tersedia")
+		return
+	}
+	out, e := dir.SuggestHospitals(r.Context(), q.Q, q.Dataset, q.Limit)
+	if e != nil {
+		s.dbError(w, r, e)
+		return
+	}
+	send(w, 200, map[string]any{"data": out, "meta": map[string]any{"count": len(out), "dataset": q.Dataset}})
+}
+
+// adminHospitals lists the hospitals assigned to the signed-in operator. The scope comes from the
+// server-side session, never from the request.
+func (s *Server) adminHospitals(w http.ResponseWriter, r *http.Request) {
+	op, yes := s.auth(w, r, false)
+	if !yes {
+		return
+	}
+	if len(r.URL.Query()) > 0 {
+		fail(w, r, 422, "validation_error", "Parameter tidak didukung")
+		return
+	}
+	out := []domain.Hospital{}
+	for _, id := range op.HospitalIDs {
+		h, e := s.hospitalByID(r.Context(), id)
+		if errors.Is(e, repository.ErrNotFound) {
+			continue
+		}
+		if e != nil {
+			s.dbError(w, r, e)
+			return
+		}
+		out = append(out, h)
+	}
+	send(w, 200, map[string]any{"data": out, "meta": map[string]any{"count": len(out), "as_of": time.Now().UTC()}})
+}
+
+// adminHospital returns one hospital with service/bed versions for optimistic-locking updates.
+// A hospital outside the operator's scope is 403, checked before any lookup.
+func (s *Server) adminHospital(w http.ResponseWriter, r *http.Request) {
+	op, yes := s.auth(w, r, false)
+	if !yes {
+		return
+	}
+	id := r.PathValue("id")
+	if !validUUID(id) {
+		fail(w, r, 404, "not_found", "Resource tidak ditemukan")
+		return
+	}
+	if !slices.Contains(op.HospitalIDs, id) {
+		fail(w, r, 403, "forbidden", "Akses rumah sakit ditolak")
+		return
+	}
+	if h, found := s.findHospital(w, r, id); found {
+		send(w, 200, map[string]any{"data": h, "meta": map[string]any{"as_of": time.Now().UTC()}})
+	}
 }
 func (s *Server) origin(w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("Origin") != s.cfg.PublicOrigin {

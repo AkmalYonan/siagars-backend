@@ -158,7 +158,7 @@ func TestSearchPushdownMatchesInMemory(t *testing.T) {
 		t.Fatal("inactive hospital must be hidden", e)
 	}
 	h, e := p.Hospital(ctx, seed.HospitalID(1))
-	if e != nil || h.CityName == "" || len(h.Services) != 5 {
+	if e != nil || h.CityName == "" || len(h.Services) != 6 {
 		t.Fatal("detail", h, e)
 	}
 }

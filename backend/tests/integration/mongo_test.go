@@ -200,7 +200,7 @@ func TestMongoTransactions(t *testing.T) {
 		t.Fatal("service enum missing")
 	}
 	hs, e := p.Hospitals(ctx)
-	if e != nil || len(hs) != 30 || len(hs[0].Services) != 5 || len(hs[0].Beds) != 4 {
+	if e != nil || len(hs) != 30 || len(hs[0].Services) != 6 || len(hs[0].Beds) != 4 {
 		t.Fatal("DTO query", e)
 	}
 	h := hs[0]

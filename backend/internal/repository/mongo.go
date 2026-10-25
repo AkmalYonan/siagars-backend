@@ -167,9 +167,17 @@ type HospitalDoc struct {
 	Longitude       *float64 `bson:"longitude"`
 	Phone           *string  `bson:"phone"`
 	BPJS            *bool    `bson:"bpjs"`
-	ProvenanceDoc   `bson:",inline"`
-	Services        []ServiceDoc `bson:"services"`
-	Beds            []BedDoc     `bson:"beds"`
+	// Upstream facility attributes; absent on seed/curated-only documents.
+	BPJSSourceURL       *string    `bson:"bpjs_source_url,omitempty"`
+	BPJSSourceUpdatedAt *time.Time `bson:"bpjs_source_updated_at,omitempty"`
+	FacilityClass       *string    `bson:"facility_class,omitempty"`
+	FacilityClassName   *string    `bson:"facility_class_name,omitempty"`
+	FacilitySubtype     *string    `bson:"facility_subtype,omitempty"`
+	FacilitySubtypeName *string    `bson:"facility_subtype_name,omitempty"`
+	Operational         *bool      `bson:"operational,omitempty"`
+	ProvenanceDoc       `bson:",inline"`
+	Services            []ServiceDoc `bson:"services"`
+	Beds                []BedDoc     `bson:"beds"`
 }
 
 // Simulation returns provenance for synthetic data: no source URL and never verified.
@@ -238,11 +246,19 @@ func (m *Mongo) Hospitals(ctx context.Context) ([]domain.Hospital, error) {
 	return hospitalDTOs(docs, names, serviceNames), nil
 }
 
+// coded returns nil when the source never provided a code.
+func coded(code, name *string) *domain.Coded {
+	if code == nil || *code == "" {
+		return nil
+	}
+	return &domain.Coded{Code: *code, Name: name}
+}
+
 // hospitalDTOs maps stored documents to domain hospitals, joining region and service names.
 func hospitalDTOs(docs []HospitalDoc, names, serviceNames map[string]string) []domain.Hospital {
 	hs := make([]domain.Hospital, 0, len(docs))
 	for _, d := range docs {
-		h := domain.Hospital{ID: d.ID, Name: d.Name, Address: d.Address, CityCode: d.CityCode, CityName: names[d.CityCode], ProvinceCode: d.ProvinceCode, ProvinceName: names[d.ProvinceCode], Latitude: d.Latitude, Longitude: d.Longitude, Phone: d.Phone, BPJS: d.BPJS, Provenance: d.domain(), Services: []domain.Service{}, Beds: []domain.Bed{}}
+		h := domain.Hospital{ID: d.ID, ExternalID: d.ExternalID, SourceNamespace: d.SourceNamespace, BPJSSourceURL: d.BPJSSourceURL, BPJSSourceUpdatedAt: d.BPJSSourceUpdatedAt, FacilityClass: coded(d.FacilityClass, d.FacilityClassName), FacilitySubtype: coded(d.FacilitySubtype, d.FacilitySubtypeName), Operational: d.Operational, Name: d.Name, Address: d.Address, CityCode: d.CityCode, CityName: names[d.CityCode], ProvinceCode: d.ProvinceCode, ProvinceName: names[d.ProvinceCode], Latitude: d.Latitude, Longitude: d.Longitude, Phone: d.Phone, BPJS: d.BPJS, Provenance: d.domain(), Services: []domain.Service{}, Beds: []domain.Bed{}}
 		for _, s := range d.Services {
 			h.Services = append(h.Services, domain.Service{Slug: s.Slug, Name: serviceNames[s.Slug], Status: s.Status, Provenance: s.domain(), Version: s.Version})
 		}

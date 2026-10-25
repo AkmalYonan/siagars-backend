@@ -254,7 +254,7 @@ Catatan kode wilayah versi ini: data seed memakai contoh bertitik seperti `31.71
 
 ### `GET /hospitals/{id}`
 
-Mengambil detail satu RS. ID harus UUID lowercase.
+Mengambil detail satu RS. `{id}` boleh UUID lowercase **atau kode fasyankes dari sumber** (SATUSEHAT `kode_satusehat`, field `external_id`). UUID huruf besar tetap ditolak (404).
 
 ```ts
 type HospitalDetailResponse = {
@@ -265,6 +265,27 @@ type HospitalDetailResponse = {
 
 RS simulasi tetap dapat dibuka melalui detail meskipun daftar default menggunakan `dataset=real`.
 
+#### Field fasilitas pada `Hospital`
+
+| Field | Arti |
+|---|---|
+| `external_id`, `source_namespace` | Kode dari sumber (mis. `1000280507`, `satusehat:msi:sandbox`); `null` untuk data simulasi/kurasi tanpa kode. |
+| `facility_class` | `{code, name}` atau `null`, mis. `{ "code": "B", "name": "Kelas B" }` (kelas RS dari SATUSEHAT MSI). |
+| `facility_subtype` | `{code, name}` atau `null`, mis. Rumah Sakit Khusus. |
+| `operational` | `true/false/null` (status operasional di sumber). |
+| `bpjs`, `bpjs_source_url`, `bpjs_source_updated_at` | BPJS dengan sumber dan waktunya; sumber `null` bila belum dikurasi. |
+| `facility_summary` | Ringkasan siap pakai: `icu`, `nicu`, `picu`, `rawat_inap` (`available/limited/unavailable/unknown`), `bpjs`, `inpatient_beds {total, available, freshness}`, `last_source_updated_at`. |
+
+Aturan penting: **unknown tetap `unknown`/`null`**. RS dari SATUSEHAT MSI belum punya data ICU/NICU/PICU/rawat inap/BPJS (MSI tidak menyediakannya), jadi `facility_summary` untuk RS nyata berisi `unknown`/`null` sampai ada data kurasi bersumber. Jangan menampilkan `unknown` sebagai "tidak tersedia". RS simulasi (`dataset=simulation|all`) berisi data lengkap untuk pengembangan UI dan berlabel `data_origin: "simulation"`. Rawat inap adalah layanan `rawat-inap` dan bed kategori `general`.
+
+### `GET /regions`
+
+Daftar provinsi beserta kota/kabupaten (`{ data: [{code, name, cities: [{code, name}]}], meta: {count} }`). Pakai `code` apa adanya sebagai `province_code`/`city_code`. Kode seed (`31.71`) dan MSI (`3171`) adalah wilayah berbeda; jangan memformat ulang.
+
+### `GET /hospitals/suggest`
+
+Autocomplete nama RS: `?q=<teks>&limit=<1..20, default 10>&dataset=real|simulation|all`. Respons `{ data: [{id, external_id, name, city_name, data_origin}], meta: {count, dataset} }`. `q` wajib (maks 100 karakter) dan dianggap teks biasa.
+
 ### `GET /hospitals/compare`
 
 Query: `ids=<id1>,<id2>[,<id3>]`.
@@ -272,7 +293,8 @@ Query: `ids=<id1>,<id2>[,<id3>]`.
 Membandingkan 2–3 RS. Urutan respons sama dengan urutan `ids`. Campuran RS real dan simulasi diperbolehkan.
 
 ```ts
-const ids = selectedHospitals.map((item) => item.id).join(',');
+// Boleh memakai id (UUID) atau external_id (kode SATUSEHAT); campuran juga boleh.
+const ids = selectedHospitals.map((item) => item.external_id ?? item.id).join(',');
 const comparison = await apiFetch<{
   data: Hospital[];
   meta: { as_of: string; count: number };
@@ -281,7 +303,8 @@ const comparison = await apiFetch<{
 
 Aturan:
 
-- Harus berisi 2 atau 3 UUID lowercase yang unik.
+- Harus berisi 2 atau 3 ID unik. Tiap ID adalah UUID lowercase atau kode fasyankes (1–64 karakter huruf/angka/`-`/`_`).
+- Dua ID yang merujuk RS yang sama (mis. UUID dan kode RS itu) ditolak `422`.
 - Jangan kirim parameter lain, termasuk `dataset`.
 - Bila satu ID tidak ditemukan, seluruh request menghasilkan `404`; tidak ada hasil parsial.
 
@@ -381,6 +404,14 @@ Logout mencabut session di server dan menghapus cookie.
 ## 6. Endpoint operator
 
 Semua endpoint pada bagian ini memerlukan cookie session. Semua mutasi juga memerlukan header `X-CSRF-Token`.
+
+### `GET /admin/hospitals`
+
+RS yang ditugaskan ke operator yang login (scope dari sesi server), lengkap dengan `services`/`beds` dan `version`. Respons `{ data: Hospital[], meta: {count, as_of} }`. Tanpa parameter.
+
+### `GET /admin/hospitals/{id}`
+
+Detail satu RS dalam scope untuk mengambil `version` terbaru sebelum `PATCH`. `{id}` harus UUID; RS di luar scope menghasilkan `403`.
 
 ### `GET /admin/referrals`
 
@@ -536,12 +567,12 @@ Jangan menampilkan raw stack trace atau mengandalkan teks `message` untuk logika
 ## 9. Batasan versi sekarang
 
 - API beroperasi dalam `DEMO_MODE=true`; rujukan bukan transaksi medis produksi.
-- Data MSI Sandbox dapat memiliki `bpjs: null`, `services: []`, `beds: []`, dan `freshness: unknown`.
+- Data MSI Sandbox dapat memiliki `bpjs: null`, `services: []`, `beds: []`, dan `freshness: unknown`; `facility_summary` untuk RS itu berisi `unknown`/`null`. MSI mengirim kelas RS, subjenis, dan status operasional (diekspos), bukan layanan, bed, maupun BPJS.
 - Data demo terdiri dari RS fiktif. Jangan menampilkan simulasi sebagai fakta RS nyata.
 - Map memakai data dari halaman list aktif; belum ada endpoint bounding box.
 - Rate limiter masih per instance backend.
 - Pencarian `q` melakukan case folding ASCII. Hindari bergantung pada kecocokan huruf kapital non-ASCII.
-- Query `q` yang diawali karakter `$` memiliki temuan backend terbuka pada review saat ini; frontend sebaiknya menolak/escape kasus tersebut sampai backend memperbaikinya.
+- Query `q` yang diawali `$` diperlakukan sebagai teks biasa (diperbaiki 25 Okt 2026).
 - Endpoint dan contoh tersedia secara lokal, tetapi deployment publik belum dinyatakan siap.
 
 ## 10. Checklist integrasi Arya

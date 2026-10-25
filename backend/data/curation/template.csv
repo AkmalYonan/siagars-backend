@@ -1,2 +1,2 @@
-external_id,source_namespace,name,bpjs,source_url,source_updated_at,svc_icu,svc_nicu,svc_picu,svc_igd-24h,svc_ambulance,bed_icu_total,bed_icu_available,bed_nicu_total,bed_nicu_available,bed_picu_total,bed_picu_available,bed_general_total,bed_general_available
-ISI_KODE_MSI,,,,https://ISI-URL-SUMBER-PUBLIK-HTTPS,ISI_RFC3339_mis_2026-10-20T08:00:00Z,,,,,,,,,,,,,
+external_id,source_namespace,name,bpjs,source_url,source_updated_at,svc_icu,svc_nicu,svc_picu,svc_igd-24h,svc_ambulance,svc_rawat-inap,bed_icu_total,bed_icu_available,bed_nicu_total,bed_nicu_available,bed_picu_total,bed_picu_available,bed_general_total,bed_general_available
+ISI_KODE_MSI,,,,https://ISI-URL-SUMBER-PUBLIK-HTTPS,ISI_RFC3339_mis_2026-10-20T08:00:00Z,,,,,,,,,,,,,,

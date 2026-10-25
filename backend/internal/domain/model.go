@@ -29,22 +29,73 @@ type Bed struct {
 	Provenance
 	Version int `json:"version"`
 }
+
+// Coded is an upstream code with its display name; Name is null until the source has been re-synced.
+type Coded struct {
+	Code string  `json:"code"`
+	Name *string `json:"name"`
+}
+
+// InpatientBeds summarizes the general (rawat inap) bed category. Null means unknown, never 0.
+type InpatientBeds struct {
+	Total     *int   `json:"total"`
+	Available *int   `json:"available"`
+	Freshness string `json:"freshness"`
+}
+
+// FacilitySummary is a read-only roll-up of what is known about ICU/NICU/PICU, inpatient care and BPJS,
+// so clients need not walk the services/beds arrays. Missing data stays "unknown"/null.
+type FacilitySummary struct {
+	ICU                 string        `json:"icu"`
+	NICU                string        `json:"nicu"`
+	PICU                string        `json:"picu"`
+	RawatInap           string        `json:"rawat_inap"`
+	BPJS                *bool         `json:"bpjs"`
+	InpatientBeds       InpatientBeds `json:"inpatient_beds"`
+	LastSourceUpdatedAt *time.Time    `json:"last_source_updated_at"`
+}
 type Hospital struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Address      *string  `json:"address"`
-	CityCode     string   `json:"city_code"`
-	CityName     string   `json:"city_name"`
-	ProvinceCode string   `json:"province_code"`
-	ProvinceName string   `json:"province_name"`
-	Latitude     *float64 `json:"latitude"`
-	Longitude    *float64 `json:"longitude"`
-	Phone        *string  `json:"phone"`
-	BPJS         *bool    `json:"bpjs"`
-	DistanceKM   *float64 `json:"distance_km"`
+	ID              string   `json:"id"`
+	ExternalID      *string  `json:"external_id"`
+	SourceNamespace *string  `json:"source_namespace"`
+	Name            string   `json:"name"`
+	Address         *string  `json:"address"`
+	CityCode        string   `json:"city_code"`
+	CityName        string   `json:"city_name"`
+	ProvinceCode    string   `json:"province_code"`
+	ProvinceName    string   `json:"province_name"`
+	Latitude        *float64 `json:"latitude"`
+	Longitude       *float64 `json:"longitude"`
+	Phone           *string  `json:"phone"`
+	BPJS            *bool    `json:"bpjs"`
+	DistanceKM      *float64 `json:"distance_km"`
+	// BPJS provenance is separate from the hospital's: it is set only by curation with a dated source.
+	BPJSSourceURL       *string    `json:"bpjs_source_url"`
+	BPJSSourceUpdatedAt *time.Time `json:"bpjs_source_updated_at"`
+	FacilityClass       *Coded     `json:"facility_class"`
+	FacilitySubtype     *Coded     `json:"facility_subtype"`
+	Operational         *bool      `json:"operational"`
 	Provenance
-	Services []Service `json:"services"`
-	Beds     []Bed     `json:"beds"`
+	Summary  FacilitySummary `json:"facility_summary"`
+	Services []Service       `json:"services"`
+	Beds     []Bed           `json:"beds"`
+}
+
+// Region is one province or city from the regions master; codes are used exactly as stored.
+type Region struct {
+	Code       string  `json:"code"`
+	Name       string  `json:"name"`
+	Kind       string  `json:"kind"`
+	ParentCode *string `json:"parent_code"`
+}
+
+// Suggestion is a compact hospital entry for autocomplete.
+type Suggestion struct {
+	ID         string  `json:"id"`
+	ExternalID *string `json:"external_id"`
+	Name       string  `json:"name"`
+	CityName   string  `json:"city_name"`
+	DataOrigin string  `json:"data_origin"`
 }
 type History struct {
 	FromStatus *string   `json:"from_status"`
@@ -125,6 +176,34 @@ func (h *Hospital) Refresh(now time.Time) {
 	for i := range h.Beds {
 		h.Beds[i].Freshness = Freshness(h.Beds[i].SourceUpdatedAt, now)
 	}
+	h.Summary = h.summary()
+}
+
+func (h *Hospital) summary() FacilitySummary {
+	status := func(slug string) string {
+		for _, s := range h.Services {
+			if s.Slug == slug && ValidServiceStatus(s.Status) {
+				return s.Status
+			}
+		}
+		return "unknown"
+	}
+	sum := FacilitySummary{ICU: status("icu"), NICU: status("nicu"), PICU: status("picu"), RawatInap: status("rawat-inap"), BPJS: h.BPJS, InpatientBeds: InpatientBeds{Freshness: "unknown"}}
+	latest := func(t *time.Time) {
+		if t != nil && (sum.LastSourceUpdatedAt == nil || t.After(*sum.LastSourceUpdatedAt)) {
+			sum.LastSourceUpdatedAt = t
+		}
+	}
+	for _, s := range h.Services {
+		latest(s.SourceUpdatedAt)
+	}
+	for _, b := range h.Beds {
+		latest(b.SourceUpdatedAt)
+		if b.Category == "general" {
+			sum.InpatientBeds = InpatientBeds{Total: b.Total, Available: b.Available, Freshness: b.Freshness}
+		}
+	}
+	return sum
 }
 
 // HospitalImport is a normalized upstream facility record, independent of the upstream payload format.
@@ -136,6 +215,8 @@ type HospitalImport struct {
 	SourceActive                                                  bool
 	SourceStatus, FacilityCode, FacilityTypeCode, FacilitySubtype string
 	FacilityClass                                                 string
+	FacilityClassName, FacilitySubtypeName                        string
+	Operational                                                   *bool
 	SyncedAt                                                      time.Time
 }
 type ImportResult struct {

@@ -1106,7 +1106,7 @@
               "type": "string",
               "example": "10000000-0000-4000-8000-000000000001,10000000-0000-4000-8000-000000000002"
             },
-            "description": "2-3 UUID lowercase dipisah koma, tanpa duplikat dan tanpa spasi. Parameter lain, kosong atau berulang: 422."
+            "description": "2-3 ID dipisah koma, tanpa duplikat dan tanpa spasi. Tiap ID boleh UUID lowercase atau kode fasyankes (kode_satusehat); campuran diperbolehkan, tetapi dua ID yang merujuk RS yang sama ditolak (422). Parameter lain, kosong atau berulang: 422."
           }
         ],
         "security": [],
@@ -1203,7 +1203,7 @@
             }
           },
           "422": {
-            "description": "ids hilang, kurang dari 2, lebih dari 3, duplikat, bukan UUID, atau parameter lain",
+            "description": "ids hilang, kurang dari 2, lebih dari 3, duplikat (termasuk UUID dan kode yang merujuk RS sama), format ID tidak valid, atau parameter lain",
             "content": {
               "application/json": {
                 "schema": {
@@ -1253,9 +1253,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "example": "10000000-0000-4000-8000-000000000001"
             },
-            "description": "UUID lowercase"
+            "description": "UUID lowercase RS atau kode fasyankes dari sumber (SATUSEHAT kode_satusehat, 1-64 karakter huruf/angka/-/_). UUID huruf besar ditolak."
           }
         ],
         "security": [],
@@ -3843,6 +3843,632 @@
           "Admin"
         ]
       }
+    },
+    "/regions": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Daftar provinsi dan kota/kabupaten",
+        "description": "Sumber resmi kode wilayah untuk filter province_code/city_code di GET /hospitals. Kode dikembalikan apa adanya dari master wilayah (seed memakai format 31.71, SATUSEHAT MSI memakai 3171); dua format itu adalah wilayah berbeda dan tidak boleh diformat ulang. Tidak menerima parameter.",
+        "operationId": "get_regions",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Province"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parameter tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "Parameter tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Store tidak mendukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "not_implemented",
+                    "message": "Fitur belum tersedia"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hospitals/suggest": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Autocomplete nama RS",
+        "description": "Hingga limit RS yang namanya memuat q (huruf besar/kecil tidak dibedakan untuk ASCII), kecocokan paling awal lebih dulu. q diperlakukan sebagai teks biasa. Parameter tidak dikenal, kosong atau berulang: 422.",
+        "operationId": "get_hospitals_suggest",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "example": "siaga"
+            }
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Suggestion"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "dataset": {
+                          "type": "string",
+                          "enum": [
+                            "real",
+                            "simulation",
+                            "all"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "dataset"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "q hilang/terlalu panjang, dataset/limit tidak valid, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "q wajib diisi, maksimal 100 karakter"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Store tidak mendukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "not_implemented",
+                    "message": "Fitur belum tersedia"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/hospitals": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Daftar RS dalam scope operator",
+        "description": "RS yang ditugaskan ke operator yang login (scope dibaca server dari sesi, bukan dari request), lengkap dengan services/beds dan version untuk update. RS yang dinonaktifkan sumber tidak ditampilkan.",
+        "operationId": "get_admin_hospitals",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Hospital"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "as_of": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "as_of"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Session tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "Akses rumah sakit ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parameter tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "Parameter tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/hospitals/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Detail RS dalam scope operator",
+        "description": "Detail satu RS dengan version tiap layanan/bed untuk optimistic locking. RS di luar scope operator: 403 (diperiksa sebelum pencarian).",
+        "operationId": "get_admin_hospitals__id_",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID lowercase RS"
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Hospital"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "as_of": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "as_of"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Session tidak valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope RS ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "Akses rumah sakit ditolak"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RS tidak ditemukan atau ID bukan UUID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Rumah sakit tidak ditemukan"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4164,6 +4790,75 @@
             "items": {
               "$ref": "#/components/schemas/Bed"
             }
+          },
+          "external_id": {
+            "type": "string",
+            "nullable": true,
+            "example": "1000000001"
+          },
+          "source_namespace": {
+            "type": "string",
+            "nullable": true,
+            "example": "satusehat:msi:sandbox"
+          },
+          "bpjs_source_url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "bpjs_source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "facility_class": {
+            "type": "object",
+            "nullable": true,
+            "description": "Kode dari sumber (mis. kelas RS SATUSEHAT MSI). name null sampai sumber disinkronkan ulang. Objek null jika sumber tidak menyediakannya.",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "B"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Kelas B"
+              }
+            },
+            "required": [
+              "code",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "facility_subtype": {
+            "type": "object",
+            "nullable": true,
+            "description": "Kode dari sumber (mis. kelas RS SATUSEHAT MSI). name null sampai sumber disinkronkan ulang. Objek null jika sumber tidak menyediakannya.",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "B"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Kelas B"
+              }
+            },
+            "required": [
+              "code",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "operational": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "facility_summary": {
+            "$ref": "#/components/schemas/FacilitySummary"
           }
         },
         "required": [
@@ -4186,9 +4881,18 @@
           "verified_at",
           "freshness",
           "services",
-          "beds"
+          "beds",
+          "external_id",
+          "source_namespace",
+          "bpjs_source_url",
+          "bpjs_source_updated_at",
+          "facility_class",
+          "facility_subtype",
+          "operational",
+          "facility_summary"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Satu RS. id adalah UUID lokal; external_id adalah kode dari sumber (SATUSEHAT: kode_satusehat) dan boleh dipakai di GET /hospitals/{id} dan /hospitals/compare. facility_summary merangkum ICU/NICU/PICU/rawat inap/BPJS."
       },
       "History": {
         "type": "object",
@@ -4536,6 +5240,197 @@
           "total_pages",
           "as_of",
           "data_scope"
+        ],
+        "additionalProperties": false
+      },
+      "FacilitySummary": {
+        "type": "object",
+        "description": "Ringkasan baca-saja untuk FE: status ICU/NICU/PICU/rawat inap dan BPJS dari data yang ada. Data tidak ada = unknown/null, tidak pernah 0/false. inpatient_beds berasal dari kategori bed general. Bukan klaim kualitas klinis.",
+        "properties": {
+          "icu": {
+            "type": "string",
+            "enum": [
+              "available",
+              "limited",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "nicu": {
+            "type": "string",
+            "enum": [
+              "available",
+              "limited",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "picu": {
+            "type": "string",
+            "enum": [
+              "available",
+              "limited",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "rawat_inap": {
+            "type": "string",
+            "enum": [
+              "available",
+              "limited",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "bpjs": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "inpatient_beds": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "nullable": true
+              },
+              "available": {
+                "type": "integer",
+                "minimum": 0,
+                "nullable": true
+              },
+              "freshness": {
+                "type": "string",
+                "enum": [
+                  "fresh",
+                  "aging",
+                  "stale",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "total",
+              "available",
+              "freshness"
+            ],
+            "additionalProperties": false
+          },
+          "last_source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "icu",
+          "nicu",
+          "picu",
+          "rawat_inap",
+          "bpjs",
+          "inpatient_beds",
+          "last_source_updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "Region": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "3171"
+          },
+          "name": {
+            "type": "string",
+            "example": "Kota Jakarta Pusat"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "Province": {
+        "type": "object",
+        "description": "Provinsi dengan kota/kabupaten di dalamnya. Kode dipakai apa adanya sebagai province_code/city_code (seed memakai 31.71, MSI memakai 3171; jangan diformat ulang).",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "31"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Region"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "cities"
+        ],
+        "additionalProperties": false
+      },
+      "Suggestion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "external_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "data_origin": {
+            "type": "string",
+            "enum": [
+              "curated",
+              "simulation",
+              "satusehat_sandbox",
+              "satusehat_production"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "name",
+          "city_name",
+          "data_origin"
+        ],
+        "additionalProperties": false
+      },
+      "Coded": {
+        "type": "object",
+        "nullable": true,
+        "description": "Kode dari sumber (mis. kelas RS SATUSEHAT MSI). name null sampai sumber disinkronkan ulang. Objek null jika sumber tidak menyediakannya.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "B"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kelas B"
+          }
+        },
+        "required": [
+          "code",
+          "name"
         ],
         "additionalProperties": false
       }
