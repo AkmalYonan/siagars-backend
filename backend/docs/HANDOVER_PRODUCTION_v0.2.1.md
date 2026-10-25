@@ -48,12 +48,25 @@ Route handler proxy dengan header bypass di `API_FRONTEND.md` bagian 2a **hanya 
 
 `GET /health`, `/ready`, `/services`, `/regions`, `/hospitals` (filter, `services` bersifat AND, `limit` maks 50, parameter tak dikenal 422), `/hospitals/suggest?q=`, `/hospitals/{id|kode}`, `/hospitals/compare?ids=`, `POST /referrals/lookup`. Detailnya ada di `/docs`.
 
-## 5. Login operator di production (perlu diketahui)
+## 5. Login operator di production
 
-- Cookie sesi `siagars_session` (HttpOnly, Secure, SameSite=Lax) dan header `X-CSRF-Token` untuk setiap mutasi berlaku seperti di `HANDOVER_v0.2.md` bagian 3.
-- Backend mencocokkan header `Origin` browser dengan `PUBLIC_ORIGIN`. Di production nilainya saat ini `https://siagars-backend.vercel.app`, jadi login dari FE di origin lain (mis. `http://localhost:3000` atau domain FE) akan ditolak 403 sampai backend mengubah `PUBLIC_ORIGIN` ke origin FE. **Beri tahu Akmal origin FE final** (satu nilai, persis, tanpa slash akhir).
-- Akun operator production dibagikan oleh Akmal lewat kanal privat, tidak ada di git atau dokumen ini.
-- Endpoint publik (bagian 4) tidak butuh login atau Origin khusus.
+Origin FE yang diterima backend: **`https://frontend-siagars.vercel.app`** (`PUBLIC_ORIGIN`, persis, tanpa slash akhir). Login dari origin lain (termasuk `http://localhost:3000`) ditolak 403; untuk uji lokal dengan login, pakai staging (`HANDOVER_v0.2.md`). Bila FE pindah domain, kabari Akmal agar `PUBLIC_ORIGIN` diubah dan backend di-redeploy.
+
+| | |
+|---|---|
+| Email | `admin@gmail.com` |
+| Password | dikirim Akmal lewat kanal privat (tidak disimpan di git) |
+| Scope RS | satu RS: `RS Simulasi Siaga 01`, id `10000000-0000-4000-8000-000000000001` |
+
+Alur:
+1. `POST /auth/login` `{ "email", "password" }` dengan `Content-Type: application/json`. Browser mengirim `Origin` sendiri; respons berisi cookie `siagars_session` (HttpOnly, Secure, SameSite=Lax, Path=/api/v1, 8 jam) dan `csrf_token` bila tersedia. Bila tidak, ambil dengan `GET /auth/csrf`.
+2. Kirim cookie otomatis lewat rewrite same-origin (`fetch('/api/v1/...', { credentials: 'include' })`).
+3. Semua mutasi (`PATCH`/`POST`) wajib header `X-CSRF-Token`. Tanpa atau salah token -> 403.
+4. `GET /admin/hospitals` (RS dalam scope, lengkap dengan `version`), `GET /admin/hospitals/{id}`, `PATCH /admin/hospitals/{id}/services/{slug}` dan `.../beds/{category}` dengan `version` terakhir. `version` basi -> 409: ambil ulang lalu coba lagi.
+5. RS di luar scope -> 403. `POST /auth/logout` mencabut sesi (setelah itu 401).
+6. Gagal login berulang kena rate limit (429). Pesan galat sama untuk email salah dan password salah.
+
+Catatan: `ICU` pada `RS Simulasi Siaga 01` sudah pernah diubah saat uji (versi 2, status `available`); itu data simulasi.
 
 ## 6. Daftar periksa FE
 
@@ -62,8 +75,11 @@ Route handler proxy dengan header bypass di `API_FRONTEND.md` bagian 2a **hanya 
 - [ ] `unknown`/`null` tampil sebagai "Belum diketahui", bukan merah/"tidak tersedia".
 - [ ] Compare memakai `external_id ?? id`.
 - [ ] Filter wilayah memakai `code` dari `GET /regions` apa adanya.
-- [ ] Origin FE diberikan ke Akmal sebelum menguji login operator.
+- [ ] Login operator diuji dari `https://frontend-siagars.vercel.app` (bukan localhost) dengan password dari Akmal.
 
 ## 7. Hasil uji production (25 Okt 2026)
 
-Dijalankan terhadap `https://siagars-backend.vercel.app`: 32 pemeriksaan lulus, mencakup health/ready, 6 layanan, regions, 516 RS nyata dengan label simulasi, detail via UUID dan kode, compare (campuran, duplikat 422, hilang 404), validasi parameter, filter AND, jarak, dataset, suggest, lookup (demo 200, acak 404), admin tanpa sesi 401, login Origin salah 403, tanpa CORS, header keamanan, `/docs` dan OpenAPI 0.2.1 dengan 19 path. Belum diuji di production: login operator berhasil dan mutasi admin (akun belum dibuat).
+Dijalankan terhadap `https://siagars-backend.vercel.app`.
+- **Publik, 32 pemeriksaan lulus:** health/ready, 6 layanan, regions, 516 RS nyata dengan label simulasi, detail via UUID dan kode, compare (campuran, duplikat 422, hilang 404), validasi parameter, filter AND, jarak, dataset, suggest, lookup (demo 200, acak 404), admin tanpa sesi 401, tanpa CORS, header keamanan, `/docs` dan OpenAPI 0.2.1 dengan 19 path.
+- **Operator, 15 pemeriksaan lulus** dari origin FE: password salah 401, origin salah 403, login 200 dengan cookie HttpOnly/Secure/SameSite=Lax/Path=/api/v1, daftar RS dalam scope (1), RS lain 403, mutasi tanpa CSRF dan CSRF salah 403, mutasi RS lain 403, logout lalu 401. Ditambah mutasi sah 200 dan tulis ulang `version` basi 409.
+- Belum diuji di production: transisi status rujukan (tidak ada rujukan yang bisa diubah operator ini selain data demo) dan rate limit login berantai (limiter per instance di Vercel).
