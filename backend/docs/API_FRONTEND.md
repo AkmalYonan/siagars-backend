@@ -46,15 +46,46 @@ export default nextConfig;
 
 ## 2a. Memakai staging (tanpa menjalankan backend sendiri)
 
-Backend staging adalah deployment Vercel dari branch `develop` (database terpisah dari production). URL dan akun uji diberikan oleh pemilik backend. Ganti `destination` rewrite ke URL staging:
+Backend staging adalah deployment Vercel dari branch `develop` (database `siagars_dev`, terpisah dari production). Setiap push ke `develop` men-deploy ulang staging di URL yang sama. Staging dilindungi *Vercel Authentication*, jadi setiap request harus membawa header `x-vercel-protection-bypass` berisi secret dari pemilik backend. **Secret ini tidak boleh sampai ke browser**, karena itu rewrite biasa tidak cukup; pakai route handler Next.js (server-side) sebagai proxy. Simpan di `.env.local` (jangan di-commit):
 
-```ts
-// next.config.ts
-{ source: '/api/v1/:path*', destination: `${process.env.API_BASE_URL}/api/v1/:path*` }
-// .env.local  ->  API_BASE_URL=https://<url-staging-dari-backend>.vercel.app
+```text
+STAGING_API_URL=https://siagars-backend-git-develop-akmal-yonans-projects.vercel.app
+VERCEL_AUTOMATION_BYPASS_SECRET=<diberikan pemilik backend lewat kanal privat>
 ```
 
-Karena browser hanya bicara dengan origin FE (rewrite), tidak perlu CORS. Syarat agar login operator jalan: nilai `PUBLIC_ORIGIN` di backend staging harus **sama persis** dengan origin FE di browser (mis. `http://localhost:3000` saat FE jalan lokal, atau `https://...vercel.app` bila FE di-deploy). Beri tahu pemilik backend origin FE yang dipakai. Perubahan versi: lihat [`CHANGELOG.md`](CHANGELOG.md).
+```ts
+// app/api/v1/[...path]/route.ts  (hanya untuk staging; production memakai rewrite biasa)
+const FORWARD = ['content-type', 'cookie', 'origin', 'x-csrf-token', 'accept'];
+
+async function proxy(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  const url = `${process.env.STAGING_API_URL}/api/v1/${path.join('/')}${new URL(req.url).search}`;
+  const headers = new Headers();
+  for (const name of FORWARD) {
+    const value = req.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set('x-vercel-protection-bypass', process.env.VERCEL_AUTOMATION_BYPASS_SECRET!);
+
+  const upstream = await fetch(url, {
+    method: req.method,
+    headers,
+    body: ['GET', 'HEAD'].includes(req.method) ? undefined : await req.text(),
+    redirect: 'manual',
+    cache: 'no-store',
+  });
+
+  const out = new Headers();
+  for (const [key, value] of upstream.headers) {
+    if (!['content-encoding', 'content-length', 'transfer-encoding'].includes(key)) out.append(key, value);
+  }
+  return new Response(upstream.body, { status: upstream.status, headers: out });
+}
+
+export { proxy as GET, proxy as POST, proxy as PATCH };
+```
+
+Header `origin` diteruskan apa adanya. Agar login operator jalan, `PUBLIC_ORIGIN` di backend staging harus **sama persis** dengan origin FE di browser. Saat ini nilainya `http://localhost:3000`; bila FE jalan di alamat lain atau di-deploy, beri tahu pemilik backend untuk mengubahnya. Perubahan versi: lihat [`CHANGELOG.md`](CHANGELOG.md). Panduan serah terima lengkap: [`HANDOVER_v0.2.md`](HANDOVER_v0.2.md).
 
 Backend development harus memakai:
 
