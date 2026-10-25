@@ -1,8 +1,8 @@
-# SiagaRS API v0.1 — Panduan Integrasi Frontend
+# SiagaRS API v0.2 — Panduan Integrasi Frontend
 
 Dokumen ini ditujukan untuk **M. Tauriq Arya / tim frontend**. Isinya menjelaskan cara memakai API versi saat ini tanpa perlu membaca kode Go.
 
-Sumber kontrak resmi tetap [`openapi.yaml`](openapi.yaml). Bila dokumen ini berbeda dengan OpenAPI, ikuti OpenAPI dan koordinasikan perubahan dengan pemilik backend. Contoh respons lengkap tersedia di [`fixtures.json`](fixtures.json).
+Riwayat perubahan per versi: [`CHANGELOG.md`](CHANGELOG.md). Sumber kontrak resmi tetap [`openapi.yaml`](openapi.yaml). Bila dokumen ini berbeda dengan OpenAPI, ikuti OpenAPI dan koordinasikan perubahan dengan pemilik backend. Contoh respons lengkap tersedia di [`fixtures.json`](fixtures.json).
 
 ## 1. Ringkasan cepat
 
@@ -43,6 +43,18 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 ```
+
+## 2a. Memakai staging (tanpa menjalankan backend sendiri)
+
+Backend staging adalah deployment Vercel dari branch `develop` (database terpisah dari production). URL dan akun uji diberikan oleh pemilik backend. Ganti `destination` rewrite ke URL staging:
+
+```ts
+// next.config.ts
+{ source: '/api/v1/:path*', destination: `${process.env.API_BASE_URL}/api/v1/:path*` }
+// .env.local  ->  API_BASE_URL=https://<url-staging-dari-backend>.vercel.app
+```
+
+Karena browser hanya bicara dengan origin FE (rewrite), tidak perlu CORS. Syarat agar login operator jalan: nilai `PUBLIC_ORIGIN` di backend staging harus **sama persis** dengan origin FE di browser (mis. `http://localhost:3000` saat FE jalan lokal, atau `https://...vercel.app` bila FE di-deploy). Beri tahu pemilik backend origin FE yang dipakai. Perubahan versi: lihat [`CHANGELOG.md`](CHANGELOG.md).
 
 Backend development harus memakai:
 

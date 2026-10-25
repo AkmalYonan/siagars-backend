@@ -51,7 +51,7 @@ Kode sama, environment berbeda lewat env var dan database:
 | `PUBLIC_ORIGIN` | `http://localhost:3000` | `https://siagars-backend.vercel.app` |
 | Operator | akun uji lokal (password min 8 byte saat `APP_ENV=development`) | akun kuat, min 12 byte |
 
-Alur: kerja dan push ke branch `develop` (tidak memicu deploy Vercel, lihat `vercel.json`); merge `develop` ke `main` hanya saat siap rilis. Setup DB dev: set `MONGODB_DATABASE=siagars_dev` di `.env`, lalu `go run . migrate`, `go run . seed`, `go run . operator`.
+Alur: kerja dan push ke branch `develop` (dideploy sebagai staging Vercel Preview untuk frontend, env dan database terpisah; lihat `deploy/VERCEL.md` bagian Staging); merge `develop` ke `main` hanya saat siap rilis (production). Riwayat versi API untuk FE: `docs/CHANGELOG.md`. Setup DB dev: set `MONGODB_DATABASE=siagars_dev` di `.env`, lalu `go run . migrate`, `go run . seed`, `go run . operator`.
 
 ## Jalankan lokal (PowerShell)
 

@@ -28,7 +28,7 @@ Aplikasi aslinya server persisten (`cmd/api`, `ListenAndServe`). Di Vercel yang 
 
 ## CI/CD
 
-- Setiap push ke `main` memicu build dan deploy produksi otomatis. Branch lain menghasilkan Preview deployment, kecuali `develop`: `vercel.json` menonaktifkan deploy untuk branch itu (`git.deploymentEnabled`), dipakai untuk pengembangan. Rilis = merge `develop` ke `main`.
+- Setiap push ke `main` memicu build dan deploy produksi otomatis. Branch lain, termasuk `develop`, menghasilkan Preview deployment (lihat Staging). Rilis = merge `develop` ke `main`.
 - Pengaturan proyek: **Root Directory = `backend`**, framework `null`, deploy dari Git `enabled`.
 - Catatan: `vercel link` dari CLI membuat proyek dengan `gitProviderOptions.createDeployments = disabled`. Pastikan sudah `enabled`, kalau tidak push tidak memicu deploy.
 - Rollback: Vercel dashboard > Deployments > pilih deployment sebelumnya > Promote to Production (atau `vercel rollback`).
@@ -48,7 +48,7 @@ Diisi di Vercel > Settings > Environment Variables. Tipe `sensitive` kecuali dic
 
 Tidak diisi: `PORT` (diatur Vercel), `OPERATOR_EMAIL` dan `OPERATOR_PASSWORD` (kosong di `.env`; hanya diperlukan saat membuat operator), `TRUSTED_PROXIES` (lihat Risiko).
 
-Variabel hanya ada di environment **Production**. Preview deployment dari branch lain belum punya env vars dan akan menjawab 503 sampai ditambahkan.
+Variabel di tabel ini hanya ada di environment **Production**. Preview (termasuk `develop`) memakai env terpisah; lihat bagian Staging.
 
 Mengubah env var tidak berlaku pada deployment lama; picu deploy ulang (push commit atau Redeploy di dashboard).
 
@@ -106,3 +106,22 @@ Pemilik proyek menyetujui deploy ini. Beberapa hal berbeda dari checklist go-liv
 5. **Deployment Protection**: `ssoProtection` proyek bernilai `all_except_custom_domains`, tetapi domain produksi terbukti dapat diakses publik tanpa login Vercel (uji di atas). URL deployment unik dan Preview bisa berperilaku berbeda.
 6. **Kredensial**: `.env` dan `atlas-credentials.env` ada di disk pengembang. Rotasi password Atlas dan secret SatuSehat sebelum repo dibuka atau dibagikan, lalu perbarui env var di Vercel dan redeploy.
 7. **Region**: fungsi berjalan di `sin1`, sedangkan region default proyek `iad1`. Latensi ke Atlas bergantung pada region cluster.
+
+## Staging (branch `develop`)
+
+Branch `develop` dideploy sebagai Preview dan dipakai frontend (Arya) selama pengembangan; `main` tetap production. Push ke `develop` memicu deploy Preview otomatis, push ke `main` memicu production.
+
+Preview deployment tidak memakai env Production. Tambahkan di Vercel > Settings > Environment Variables dengan **Environments = Preview** (bila ada pilihan branch, isi `develop`):
+
+| Variabel | Nilai staging |
+|---|---|
+| `APP_ENV` | `development` bila `PUBLIC_ORIGIN` berupa `http://localhost:3000`; `production` bila FE di-deploy dengan https (lalu password operator min 12 byte) |
+| `PUBLIC_ORIGIN` | Origin browser FE, persis (mis. `http://localhost:3000` atau `https://fe-siagars.vercel.app`). Tipe **biasa** |
+| `MONGODB_URI` | URI Atlas yang sama |
+| `MONGODB_DATABASE` | `siagars_dev` (**bukan** `siagars`) |
+| `SESSION_TTL_HOURS`, `DEMO_MODE` | `8`, `true` |
+| `SATUSEHAT_ENABLED` | `false` (sync dijalankan dari lokal) |
+
+Setelah menambah env, picu deploy ulang (Redeploy atau push). URL stabil branch: `https://<project>-git-develop-<team>.vercel.app` (lihat tab Deployments). Deployment Preview bisa dilindungi *Vercel Authentication*; bila FE mendapat halaman login Vercel, matikan di Settings > Deployment Protection atau pakai *Protection Bypass for Automation*.
+
+Akun uji operator dibuat dari lokal ke `siagars_dev` (`go run . operator` dengan `.env` dev) dan dibagikan lewat kanal privat, tidak di git. Rilis: merge `develop` ke `main`, jalankan `migrate` terhadap database production lebih dulu.
