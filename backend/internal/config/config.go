@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,9 @@ type Config struct {
 	Port, MongoURI, MongoDatabase, PublicOrigin, Environment string
 	SessionTTL                                               time.Duration
 	SecureCookie                                             bool
+	// AllowedOrigins lists every browser origin accepted for login and mutations (exact match). The first
+	// PUBLIC_ORIGIN entry is the primary one and decides the Secure cookie flag.
+	AllowedOrigins []string
 	// TrustedProxies are the networks whose X-Forwarded-For header is believed; empty means never.
 	TrustedProxies []netip.Prefix
 	SATUSEHAT      SATUSEHATConfig
@@ -36,6 +40,34 @@ type SATUSEHATConfig struct {
 // Jabodetabek lists the Kemendagri kab/kota codes of DKI Jakarta, Bogor, Depok, Tangerang and Bekasi.
 var Jabodetabek = []string{"3101", "3171", "3172", "3173", "3174", "3175", "3201", "3271", "3276", "3603", "3671", "3674", "3216", "3275"}
 
+// OriginAllowed reports whether a browser Origin header matches an accepted origin exactly.
+func (c Config) OriginAllowed(origin string) bool {
+	if origin == "" {
+		return false
+	}
+	return origin == c.PublicOrigin || slices.Contains(c.AllowedOrigins, origin)
+}
+
+// parseOrigins splits a comma-separated PUBLIC_ORIGIN. Each entry must be a bare origin. Outside
+// development a non-primary entry may use http only for a loopback host, so local frontends can reach it.
+func parseOrigins(raw, environment string) ([]string, error) {
+	var out []string
+	for i, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		u, e := url.Parse(part)
+		if e != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil || strings.HasSuffix(part, "/") || strings.Contains(part, "*") {
+			return nil, fmt.Errorf("PUBLIC_ORIGIN must be one or more comma-separated origins without a path")
+		}
+		if u.Scheme == "http" && environment != "development" && i > 0 && u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1" {
+			return nil, fmt.Errorf("HTTPS required outside development (http allowed only for localhost)")
+		}
+		if !slices.Contains(out, part) {
+			out = append(out, part)
+		}
+	}
+	return out, nil
+}
+
 func Load() (Config, error) {
 	c := Config{Port: get("PORT", "8080"), MongoURI: os.Getenv("MONGODB_URI"), MongoDatabase: get("MONGODB_DATABASE", "siagars"), PublicOrigin: get("PUBLIC_ORIGIN", "http://localhost:3000"), Environment: get("APP_ENV", "development")}
 	if m, e := url.Parse(c.MongoURI); c.MongoURI == "" || e != nil || (m.Scheme != "mongodb" && m.Scheme != "mongodb+srv") || m.Host == "" {
@@ -47,10 +79,12 @@ func Load() (Config, error) {
 	if c.Environment != "development" && c.Environment != "test" && c.Environment != "production" {
 		return c, fmt.Errorf("invalid APP_ENV")
 	}
-	u, e := url.Parse(c.PublicOrigin)
-	if e != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
-		return c, fmt.Errorf("PUBLIC_ORIGIN must be an origin without a path")
+	origins, e := parseOrigins(c.PublicOrigin, c.Environment)
+	if e != nil {
+		return c, e
 	}
+	c.PublicOrigin, c.AllowedOrigins = origins[0], origins
+	u, _ := url.Parse(c.PublicOrigin)
 	c.SecureCookie = u.Scheme == "https"
 	if !c.SecureCookie && c.Environment != "development" {
 		return c, fmt.Errorf("HTTPS required outside development")

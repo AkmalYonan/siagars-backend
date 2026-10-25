@@ -40,7 +40,7 @@ Diisi di Vercel > Settings > Environment Variables. Tipe `sensitive` kecuali dic
 | Variabel | Catatan |
 |---|---|
 | `APP_ENV` | `production` |
-| `PUBLIC_ORIGIN` | `https://siagars-backend.vercel.app`. Tipe **biasa**: Vercel menolak `PUBLIC_*` bertipe sensitive. Harus sama persis dengan origin browser; ubah bila memakai domain kustom atau frontend di domain lain |
+| `PUBLIC_ORIGIN` | Origin browser FE; boleh daftar dipisah koma, pertama = utama (production: `https://frontend-siagars.vercel.app,http://localhost:3000`). Awalnya `https://siagars-backend.vercel.app`. Tipe **biasa**: Vercel menolak `PUBLIC_*` bertipe sensitive. Harus sama persis dengan origin browser; ubah bila memakai domain kustom atau frontend di domain lain |
 | `MONGODB_URI`, `MONGODB_DATABASE`, `MONGODB_USERNAME`, `MONGODB_PASSWORD` | Atlas |
 | `SESSION_TTL_HOURS`, `DEMO_MODE` | Seperti `.env.example` |
 | `SATUSEHAT_*` | Sandbox read-only |

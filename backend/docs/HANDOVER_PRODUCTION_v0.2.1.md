@@ -50,7 +50,19 @@ Route handler proxy dengan header bypass di `API_FRONTEND.md` bagian 2a **hanya 
 
 ## 5. Login operator di production
 
-Origin FE yang diterima backend: **`https://frontend-siagars.vercel.app`** (`PUBLIC_ORIGIN`, persis, tanpa slash akhir). Login dari origin lain (termasuk `http://localhost:3000`) ditolak 403; untuk uji lokal dengan login, pakai staging (`HANDOVER_v0.2.md`). Bila FE pindah domain, kabari Akmal agar `PUBLIC_ORIGIN` diubah dan backend di-redeploy.
+Backend production menerima login dari **dua origin** (`PUBLIC_ORIGIN` berisi daftar, cocok persis, tanpa slash akhir):
+- `https://frontend-siagars.vercel.app` (FE yang sudah di-deploy), dan
+- `http://localhost:3000` (FE lokal, **harus port 3000 persis**; `127.0.0.1:3000` atau port lain ditolak 403).
+
+Jadi FE boleh memilih backend dengan satu variabel:
+
+```text
+# .env.local di FE
+API_BASE_URL=https://siagars-backend.vercel.app                                         # production
+# API_BASE_URL=https://siagars-backend-git-develop-akmal-yonans-projects.vercel.app    # staging (butuh bypass, lihat HANDOVER_v0.2.md)
+```
+
+Dua catatan untuk FE lokal: (1) panggil API lewat rewrite same-origin (`/api/v1/...`) sehingga cookie sesi dikelola browser pada `localhost:3000`; (2) cookie production bertanda `Secure`, dan Chrome/Firefox tetap menerimanya di `http://localhost`, tetapi Safari tidak, jadi uji login lokal dengan Chrome atau Firefox. Bila FE pindah domain atau port, kabari Akmal agar daftar origin diubah dan backend di-redeploy.
 
 | | |
 |---|---|
@@ -75,7 +87,7 @@ Catatan: `ICU` pada `RS Simulasi Siaga 01` sudah pernah diubah saat uji (versi 2
 - [ ] `unknown`/`null` tampil sebagai "Belum diketahui", bukan merah/"tidak tersedia".
 - [ ] Compare memakai `external_id ?? id`.
 - [ ] Filter wilayah memakai `code` dari `GET /regions` apa adanya.
-- [ ] Login operator diuji dari `https://frontend-siagars.vercel.app` (bukan localhost) dengan password dari Akmal.
+- [ ] Login operator diuji dari `https://frontend-siagars.vercel.app` dan dari `http://localhost:3000` (Chrome/Firefox) dengan password dari Akmal.
 
 ## 7. Hasil uji production (25 Okt 2026)
 

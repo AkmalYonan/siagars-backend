@@ -535,7 +535,7 @@ func (s *Server) adminHospital(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (s *Server) origin(w http.ResponseWriter, r *http.Request) bool {
-	if r.Header.Get("Origin") != s.cfg.PublicOrigin {
+	if !s.cfg.OriginAllowed(r.Header.Get("Origin")) {
 		fail(w, r, 403, "invalid_origin", "Origin tidak diizinkan")
 		return false
 	}

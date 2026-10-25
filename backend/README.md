@@ -37,7 +37,7 @@ go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat
 Saat API berjalan, buka http://localhost:8080/docs. Spec mentah ada di http://localhost:8080/docs/openapi.json (dari `docs/openapi.yaml` yang di-embed ke binary, dengan server di-set relatif `/api/v1`). Kedua path berada di luar `/api/v1`, jadi tidak mengubah kontrak API; di deployment same-origin, reverse proxy hanya meneruskan `/api/v1/*`, sehingga /docs hanya tersedia bila port Go diakses langsung.
 
 - UI Scalar (3 kolom, pencarian Ctrl+K, dark mode, contoh kode, tombol Test Request) dimuat dari jsDelivr (`@scalar/api-reference@1.67.0`) dengan hash SRI dan CSP ketat; halaman butuh internet untuk aset tersebut. Endpoint dikelompokkan per tag Publik/Auth/Admin.
-- "Try it out" untuk endpoint GET langsung jalan. Login dan mutasi memeriksa `Origin == PUBLIC_ORIGIN`; dari halaman /docs Origin-nya `http://localhost:8080`, jadi akan 403 kecuali saat development PUBLIC_ORIGIN di-set ke `http://localhost:8080`. Mutasi juga butuh header X-CSRF-Token dari `/auth/csrf`.
+- "Try it out" untuk endpoint GET langsung jalan. Login dan mutasi memeriksa Origin terhadap daftar `PUBLIC_ORIGIN` (cocok persis); dari halaman /docs Origin-nya `http://localhost:8080`, jadi akan 403 kecuali saat development PUBLIC_ORIGIN di-set ke `http://localhost:8080`. Mutasi juga butuh header X-CSRF-Token dari `/auth/csrf`.
 
 ## Development vs Production
 

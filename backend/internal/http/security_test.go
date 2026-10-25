@@ -363,3 +363,21 @@ func TestSessionCookieIsRejectedWhenMalformed(t *testing.T) {
 		}
 	}
 }
+
+// TestMultipleAllowedOrigins covers a backend serving a deployed frontend and a local one at once.
+func TestMultipleAllowedOrigins(t *testing.T) {
+	r := newSecRig(t)
+	r.h = New(r.store, config.Config{PublicOrigin: "https://fe.example", AllowedOrigins: []string{"https://fe.example", secOrigin}, SessionTTL: time.Hour}, func(context.Context) error { return nil })
+	for origin, want := range map[string]int{"https://fe.example": 200, secOrigin: 200, "http://localhost:3001": 403, "https://evil.example": 403, "null": 403} {
+		w := r.do(secReq{method: "POST", path: "/auth/login", body: loginBody(secEmail, secPassword), origin: origin})
+		if w.Code != want {
+			t.Errorf("%s: got %d want %d", origin, w.Code, want)
+		}
+	}
+	// CSRF stays enforced for a session created from the second origin.
+	w := r.do(secReq{method: "POST", path: "/auth/login", body: loginBody(secEmail, secPassword)})
+	cookie := w.Result().Cookies()[0].Value
+	if w := r.do(secReq{method: "POST", path: "/auth/logout", cookie: cookie}); w.Code != 403 {
+		t.Fatalf("logout without csrf: %d", w.Code)
+	}
+}

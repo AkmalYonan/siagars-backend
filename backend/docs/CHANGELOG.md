@@ -17,6 +17,9 @@ SATUSEHAT sandbox tidak menyediakan ICU/NICU/PICU/bed/rawat inap/BPJS, jadi RS n
 | `bpjs_data_origin` (Hospital) | Asal nilai `bpjs`: `simulation`, `curated`, atau `null` bila `bpjs` null. |
 | `facility_summary.data_origin` | `simulation` bila ada angka contoh di ringkasan; asal data bersumber bila tidak; `null` bila tidak ada data. |
 
+### Konfigurasi
+- Backend menerima login dari beberapa origin FE (`PUBLIC_ORIGIN` berdaftar). Production: `https://frontend-siagars.vercel.app` dan `http://localhost:3000`; staging: `http://localhost:3000` dan domain FE yang sama. FE cukup mengganti `API_BASE_URL`. Tidak ada perubahan kontrak API.
+
 ### Yang harus dilakukan FE
 - Tampilkan label **"Simulasi"** di badge/ringkasan bila `facility_summary.data_origin == "simulation"` dan di BPJS bila `bpjs_data_origin == "simulation"`. Jangan menyajikannya sebagai fakta RS.
 - `freshness` data contoh dihitung dari `source_updated_at` seperti biasa, jadi berubah menjadi `stale` setelah 24 jam sejak data ditempel. Itu perilaku yang benar, bukan bug.
