@@ -42,6 +42,9 @@ func sharedHandler() (http.Handler, error) {
 	if e != nil {
 		return nil, errors.New("invalid database configuration")
 	}
+	if e = enableBPJSHistory(repo, cfg); e != nil {
+		return nil, e
+	}
 	handler = api.New(repo, cfg, repo.Ready)
 	return handler, nil
 }

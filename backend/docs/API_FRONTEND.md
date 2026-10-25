@@ -630,3 +630,7 @@ Jangan menampilkan raw stack trace atau mengandalkan teks `message` untuk logika
 - [ ] Error UI memakai status/`error.code`, sementara `request_id` dicatat untuk diagnosis.
 - [ ] Data `simulation` dan status demo selalu diberi label yang jelas.
 - [ ] Tidak ada credential SATUSEHAT, MongoDB, session token, atau password operator di bundle frontend.
+
+## Cek BPJS simulasi dan riwayat operator (0.3.0)
+
+`POST /bpjs/check` (publik), `GET /admin/bpjs-checks` dan `POST /admin/bpjs-checks/{id}/reveal` (operator). Bentuk request/respons, data demo, galat, dan permintaan perubahan teks persetujuan ada di [`HANDOVER_BE-TO-FE_BPJS.md`](HANDOVER_BE-TO-FE_BPJS.md); skema resmi di `openapi.yaml`. Ini simulasi dengan peserta sintetis, bukan BPJS Kesehatan, dan input pengguna dicatat selama 30 hari.

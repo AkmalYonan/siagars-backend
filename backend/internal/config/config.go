@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/netip"
 	"net/url"
@@ -19,6 +20,9 @@ type Config struct {
 	// AllowedOrigins lists every browser origin accepted for login and mutations (exact match). The first
 	// PUBLIC_ORIGIN entry is the primary one and decides the Secure cookie flag.
 	AllowedOrigins []string
+	// BPJSHistoryKey is the 32-byte server secret that encrypts the original input of BPJS checks; nil
+	// means only masked history is stored.
+	BPJSHistoryKey []byte
 	// TrustedProxies are the networks whose X-Forwarded-For header is believed; empty means never.
 	TrustedProxies []netip.Prefix
 	SATUSEHAT      SATUSEHATConfig
@@ -106,6 +110,13 @@ func Load() (Config, error) {
 	}
 	if c.SATUSEHAT, e = LoadSATUSEHAT(); e != nil {
 		return c, e
+	}
+	if raw := strings.TrimSpace(os.Getenv("BPJS_HISTORY_KEY")); raw != "" {
+		key, e := base64.StdEncoding.DecodeString(raw)
+		if e != nil || len(key) != 32 {
+			return c, fmt.Errorf("BPJS_HISTORY_KEY must be 32 random bytes, base64-encoded")
+		}
+		c.BPJSHistoryKey = key
 	}
 	return c, nil
 }

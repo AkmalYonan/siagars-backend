@@ -79,7 +79,7 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 		handler      http.HandlerFunc
 	}{
 		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
-		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
+		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/admin/bpjs-checks/{id}/reveal", s.bpjsReveal}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
 		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
 	}
 	for _, route := range routes {

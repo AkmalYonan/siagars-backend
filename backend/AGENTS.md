@@ -7,13 +7,13 @@ Instruksi untuk coding agent di repository backend Go. Versi kerja V0.1 diperbar
 - Akmal Bariq Yonanda pemilik backend; M. Tauriq Arya pemilik frontend/integrasi; Radja Admiral ketua/reviewer scope.
 - Bangun Go REST API + MongoDB (Atlas) untuk pencarian RS, provenance, tracking sintetis, auth/operator dan audit.
 - Implementasikan Must dahulu. Integrasi sandbox opsional dan dinonaktifkan default; layanan inti harus berjalan dengan seed data.
-- Tidak ada data pasien nyata, NIK, diagnosis, pembayaran atau rujukan produksi pada V0.1.
+- Tidak ada data pasien nyata, NIK, diagnosis, pembayaran atau rujukan produksi pada V0.1. Satu pengecualian yang diputuskan pemilik (25 Okt 2026): input halaman cek BPJS simulasi dicatat untuk riwayat operator, hanya tersamar + terenkripsi (kunci `BPJS_HISTORY_KEY` di environment backend), dihapus otomatis setelah 30 hari, dan data asli hanya terbuka lewat re-autentikasi operator dengan audit. Jangan memperluas pencatatan ini ke endpoint lain atau me-log input.
 
 ## Kontrak
 
 - `docs/openapi.yaml` adalah sumber kontrak saat implementasi dimulai; sertakan contoh sukses/galat dan enum.
 - Prefix `/api/v1`, JSON snake_case, UUID opaque, RFC3339 UTC. FE menggunakan snapshot versi yang sama.
-- API memiliki 19 operasi: health/readiness; layanan; wilayah; daftar, detail, compare, dan autocomplete RS; lookup tracking; auth; serta operasi admin (referral, daftar/detail RS dalam scope, update layanan/bed). `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
+- API memiliki 22 operasi: health/readiness; layanan; wilayah; daftar, detail, compare, dan autocomplete RS; lookup tracking; auth; cek BPJS simulasi; serta operasi admin (referral, daftar/detail RS dalam scope, update layanan/bed, riwayat cek BPJS dan reveal). `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
 - Jangan mengubah endpoint, enum, pagination atau makna null tanpa memperbarui OpenAPI, fixture dan koordinasi frontend.
 - `services` AND; limit default 20/max50; parameter unknown 422. Jarak Haversine garis lurus, bukan ETA atau ukuran kualitas klinis.
 - Unknown = null/status unknown. Bed 0 bukan unknown. Freshness terpisah dari origin/verifikasi dan dihitung berdasarkan source_updated_at, bukan synced_at.

@@ -28,6 +28,8 @@ var (
 type Mongo struct {
 	Client *mongo.Client
 	DB     *mongo.Database
+	// history encrypts BPJS check input; nil keeps only masked data.
+	history *HistoryCipher
 }
 
 // Open configures the client lazily; the first operation establishes the connection.
@@ -36,7 +38,7 @@ func Open(uri, database string) (*Mongo, error) {
 	if e != nil {
 		return nil, e
 	}
-	return &Mongo{c, c.Database(database)}, nil
+	return &Mongo{Client: c, DB: c.Database(database)}, nil
 }
 func (m *Mongo) Close(ctx context.Context) error { return m.Client.Disconnect(ctx) }
 func Hash(v string) string                       { s := sha256.Sum256([]byte(v)); return hex.EncodeToString(s[:]) }
@@ -93,13 +95,15 @@ func (m *Mongo) Migrate(ctx context.Context) error {
 		if e != nil {
 			return e
 		}
-		checksum := Hash(string(b))
+		// Line endings must not change a checksum (Windows checkouts may convert LF to CRLF); a checksum
+		// recorded from the raw bytes by an earlier run is still accepted.
+		checksum, rawChecksum := Hash(strings.ReplaceAll(string(b), "\r\n", "\n")), Hash(string(b))
 		var existing struct {
 			Checksum string `bson:"checksum"`
 		}
 		e = applied.FindOne(ctx, bson.D{{Key: "_id", Value: entry.Name()}}).Decode(&existing)
 		if e == nil {
-			if existing.Checksum != checksum {
+			if existing.Checksum != checksum && existing.Checksum != rawChecksum {
 				return fmt.Errorf("migration checksum mismatch: %s", entry.Name())
 			}
 			continue

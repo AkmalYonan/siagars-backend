@@ -383,5 +383,35 @@
       "message": "Rumah sakit tidak ditemukan: 30000000-0000-4000-8000-000000000999"
     },
     "request_id": "request-id-example"
+  },
+  "bpjs_found": {
+    "data": {
+      "result": "found",
+      "participant": {
+        "nik_masked": "9999********0001",
+        "name_masked": "BU** SA*****",
+        "status": "active",
+        "inactive_reason": null,
+        "membership_type": {
+          "code": "PBPU",
+          "name": "Pekerja Bukan Penerima Upah"
+        },
+        "care_class": "3",
+        "primary_facility": {
+          "code": "SIM-FKTP-001",
+          "name": "Puskesmas Simulasi Kebayoran"
+        }
+      },
+      "data_origin": "simulation",
+      "checked_at": "2026-10-25T08:00:00Z"
+    }
+  },
+  "bpjs_not_found": {
+    "data": {
+      "result": "not_found",
+      "participant": null,
+      "data_origin": "simulation",
+      "checked_at": "2026-10-25T08:00:00Z"
+    }
   }
 }

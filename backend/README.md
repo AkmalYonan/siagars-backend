@@ -242,3 +242,11 @@ Argumen `curate <file> [--apply]` didukung oleh `go run .` dan `go run ./cmd/man
 ## Data contoh fasilitas (`dummy-facilities`)
 
 SATUSEHAT sandbox tidak punya ICU/NICU/PICU/bed/rawat inap/BPJS. `go run ./cmd/manage dummy-facilities` menempelkan data contoh deterministik ke RS impor (bukan RS simulasi) di database yang dipilih `MONGODB_DATABASE`. Semua item berlabel `data_origin=simulation`, tanpa sumber, tanpa `verified_at`; BPJS memakai `bpjs_data_origin=simulation`. Hanya menambah, tidak menimpa data yang ada, aman diulang. **Jalankan hanya pada database dev/staging (`siagars_dev`), bukan production.** `curate` menggantikan item simulasi yang belum diubah operator dengan data bersumber.
+
+## Cek BPJS simulasi (`/bpjs/check`) dan riwayat operator
+
+Simulasi dengan peserta sintetis (NIK fiktif berawalan `9999`, dibuat oleh `seed`); **bukan** BPJS Kesehatan dan tidak memanggil API eksternal. Panduan dan data demo: [`docs/HANDOVER_BE-TO-FE_BPJS.md`](docs/HANDOVER_BE-TO-FE_BPJS.md).
+
+- Urutan setup: `go run ./cmd/manage migrate` (migration 005) lalu `go run ./cmd/manage seed`.
+- Env `BPJS_HISTORY_KEY`: 32 byte acak, base64 (`python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`). Tanpa kunci, cek tetap jalan tetapi riwayat hanya menyimpan data tersamar dan `reveal` membalas 409. Jangan commit; pakai kunci berbeda untuk setiap environment. Kunci hilang = data asli tidak terbuka lagi.
+- Input pengguna dicatat (tersamar + terenkripsi) dan dihapus otomatis setelah 30 hari (index TTL). Operator melihat riwayat di `GET /admin/bpjs-checks` dan membuka data asli di `POST /admin/bpjs-checks/{id}/reveal` setelah memasukkan ulang password; setiap akses diaudit.

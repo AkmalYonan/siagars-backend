@@ -137,7 +137,7 @@ func TestDocs(t *testing.T) {
 		Servers []map[string]string       `json:"servers"`
 		Paths   map[string]map[string]any `json:"paths"`
 	}
-	if spec.Code != 200 || json.Unmarshal(spec.Body.Bytes(), &doc) != nil || doc.OpenAPI != "3.0.3" || len(doc.Servers) != 1 || doc.Servers[0]["url"] != "/api/v1" || len(doc.Paths) != 19 {
+	if spec.Code != 200 || json.Unmarshal(spec.Body.Bytes(), &doc) != nil || doc.OpenAPI != "3.0.3" || len(doc.Servers) != 1 || doc.Servers[0]["url"] != "/api/v1" || len(doc.Paths) != 22 {
 		t.Fatal(spec.Code, doc.OpenAPI, doc.Servers, len(doc.Paths))
 	}
 	if w := get("/docs/"); w.Code != 301 || w.Header().Get("Location") != "/docs" {

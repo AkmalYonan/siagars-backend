@@ -2,6 +2,22 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## 0.3.0 (25 Okt 2026) - branch `develop` (staging)
+
+### Baru: cek BPJS (simulasi) dan riwayat operator
+| Endpoint | Fungsi |
+|---|---|
+| `POST /bpjs/check` | Publik. Mencocokkan NIK + nama + tanggal lahir ke **peserta sintetis**; bukan BPJS Kesehatan. Respons tersamar, `data_origin: "simulation"`, rate limit 10/menit/IP. |
+| `GET /admin/bpjs-checks` | Riwayat pemeriksaan (tersamar) untuk semua operator login. |
+| `POST /admin/bpjs-checks/{id}/reveal` | Membuka data asli satu entri setelah operator memasukkan ulang passwordnya; diaudit. |
+
+Panduan dan data demo: [`HANDOVER_BE-TO-FE_BPJS.md`](HANDOVER_BE-TO-FE_BPJS.md). Total 22 operasi; perubahan aditif.
+
+### Yang harus dilakukan FE
+- Ubah teks persetujuan `/cek-bpjs`: input **dicatat** untuk riwayat operator (tersamar + terenkripsi, dihapus otomatis setelah 30 hari). Usulan kalimat ada di handover.
+- Tambahkan halaman riwayat operator dan dialog password untuk "Lihat data asli".
+- Backend: migration 005 (koleksi `bpjs_participants`, `bpjs_check_history` dengan index TTL 30 hari) dan env baru `BPJS_HISTORY_KEY` (opsional; tanpa kunci hanya data tersamar yang disimpan dan reveal membalas 409).
+
 ## 0.2.1 (25 Okt 2026) - branch `develop` (staging)
 
 ### Baru: data contoh fasilitas untuk RS nyata

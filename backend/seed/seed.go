@@ -98,6 +98,14 @@ func apply(ctx context.Context, db *mongo.Database) error {
 	if _, e := db.Collection("hospitals").BulkWrite(ctx, models, ordered); e != nil {
 		return e
 	}
+	models = []mongo.WriteModel{}
+	for _, m := range BPJSDemoMembers {
+		models = append(models, insertOnly(m.NIK, bson.D{{Key: "name", Value: m.Name}, {Key: "birth_date", Value: m.BirthDate}, {Key: "status", Value: m.Status}, {Key: "inactive_reason", Value: m.InactiveReason},
+			{Key: "membership_code", Value: m.MembershipCode}, {Key: "membership_name", Value: m.MembershipName}, {Key: "care_class", Value: m.CareClass}, {Key: "facility_code", Value: m.FacilityCode}, {Key: "facility_name", Value: m.FacilityName}}))
+	}
+	if _, e := db.Collection("bpjs_participants").BulkWrite(ctx, models, ordered); e != nil {
+		return e
+	}
 	result, e := db.Collection("referrals").UpdateOne(ctx, key(ReferralID), bson.D{{Key: "$setOnInsert", Value: bson.D{
 		{Key: "owner_hospital_id", Value: HospitalID(1)}, {Key: "destination_hospital_id", Value: HospitalID(2)}, {Key: "tracking_token_hash", Value: repository.Hash("SR-DEMO-001")},
 		{Key: "status", Value: "searching"}, {Key: "public_note", Value: "Pencarian tujuan dalam skenario simulasi"}, {Key: "next_step", Value: "Menunggu konfirmasi simulasi"},
