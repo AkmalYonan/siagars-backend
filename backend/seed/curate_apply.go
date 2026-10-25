@@ -66,7 +66,7 @@ func ApplyCuration(ctx context.Context, db *mongo.Database, records []CuratedHos
 			continue
 		}
 		if r.BPJS != nil {
-			res, e := hospitals.UpdateOne(ctx, bson.D{{Key: "_id", Value: h.ID}, {Key: "bpjs", Value: nil}}, bson.D{{Key: "$set", Value: bson.D{{Key: "bpjs", Value: *r.BPJS}, {Key: "bpjs_source_url", Value: r.SourceURL}, {Key: "bpjs_source_updated_at", Value: r.SourceUpdatedAt.UTC()}}}})
+			res, e := hospitals.UpdateOne(ctx, bson.D{{Key: "_id", Value: h.ID}, {Key: "$or", Value: bson.A{bson.D{{Key: "bpjs", Value: nil}}, bson.D{{Key: "bpjs_data_origin", Value: "simulation"}}}}}, bson.D{{Key: "$set", Value: bson.D{{Key: "bpjs", Value: *r.BPJS}, {Key: "bpjs_data_origin", Value: "curated"}, {Key: "bpjs_source_url", Value: r.SourceURL}, {Key: "bpjs_source_updated_at", Value: r.SourceUpdatedAt.UTC()}}}})
 			if e != nil {
 				return out, e
 			}
@@ -103,7 +103,12 @@ func curatedProvenance(sourceURL string, sourceUpdatedAt, syncedAt time.Time) re
 	return repository.ProvenanceDoc{DataOrigin: "curated", SourceURL: &u, SourceUpdatedAt: &s, SyncedAt: &syncedAt}
 }
 
+// pushIfAbsent adds an item unless one with the same key exists. An untouched simulation item (version 1,
+// from dummy-facilities) is replaced by sourced data; anything else is never overwritten.
 func pushIfAbsent(ctx context.Context, c *mongo.Collection, id, field, column, value string, item any) (bool, error) {
+	if _, e := c.UpdateOne(ctx, bson.D{{Key: "_id", Value: id}}, bson.D{{Key: "$pull", Value: bson.D{{Key: field, Value: bson.D{{Key: column, Value: value}, {Key: "data_origin", Value: "simulation"}, {Key: "version", Value: 1}}}}}}); e != nil {
+		return false, fmt.Errorf("%s %s: %w", field, value, e)
+	}
 	res, e := c.UpdateOne(ctx, bson.D{{Key: "_id", Value: id}, {Key: field + "." + column, Value: bson.D{{Key: "$ne", Value: value}}}}, bson.D{{Key: "$push", Value: bson.D{{Key: field, Value: item}}}})
 	if e != nil {
 		return false, fmt.Errorf("%s %s: %w", field, value, e)

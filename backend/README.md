@@ -27,7 +27,7 @@ Isi `.env` di root project (salin dari `.env.example`; file ini git-ignored), la
 
 ~~~powershell
 go run .                  # muat .env lalu jalankan API di http://localhost:8080
-go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat | curate
+go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat | curate | dummy-facilities
 ~~~
 
 `go run .` membaca `.env` tanpa menimpa variabel yang sudah di-set di terminal, jadi override sementara tetap bisa, misalnya `$env:SATUSEHAT_ENABLED='true'; $env:SATUSEHAT_KABKOTA='jabodetabek'; go run . sync-satusehat`. Log hanya mencatat jumlah variabel yang dimuat, bukan nilainya. `cmd/api` dan `cmd/manage` tetap tersedia dan sengaja tidak memuat `.env` (untuk container/produksi).
@@ -238,3 +238,7 @@ Argumen `curate <file> [--apply]` didukung oleh `go run .` dan `go run ./cmd/man
 ## Perbandingan RS (compare)
 
 `GET /api/v1/hospitals/compare?ids=<uuid>,<uuid>[,<uuid>]` mengembalikan detail lengkap 2-3 RS dengan urutan sesuai `ids` (`{data:[...], meta:{as_of,count}}`). ID duplikat, kurang dari 2, lebih dari 3 atau bukan UUID lowercase: 422; ada ID tidak ditemukan: 404 dengan pesan menyebut ID itu dan tanpa hasil parsial. RS simulasi dan real dapat dibandingkan sekaligus. Alasan desain: `docs/DECISIONS.md` (paket G).
+
+## Data contoh fasilitas (`dummy-facilities`)
+
+SATUSEHAT sandbox tidak punya ICU/NICU/PICU/bed/rawat inap/BPJS. `go run ./cmd/manage dummy-facilities` menempelkan data contoh deterministik ke RS impor (bukan RS simulasi) di database yang dipilih `MONGODB_DATABASE`. Semua item berlabel `data_origin=simulation`, tanpa sumber, tanpa `verified_at`; BPJS memakai `bpjs_data_origin=simulation`. Hanya menambah, tidak menimpa data yang ada, aman diulang. **Jalankan hanya pada database dev/staging (`siagars_dev`), bukan production.** `curate` menggantikan item simulasi yang belum diubah operator dengan data bersumber.

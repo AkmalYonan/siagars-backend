@@ -319,7 +319,7 @@ RS simulasi tetap dapat dibuka melalui detail meskipun daftar default menggunaka
 | `bpjs`, `bpjs_source_url`, `bpjs_source_updated_at` | BPJS dengan sumber dan waktunya; sumber `null` bila belum dikurasi. |
 | `facility_summary` | Ringkasan siap pakai: `icu`, `nicu`, `picu`, `rawat_inap` (`available/limited/unavailable/unknown`), `bpjs`, `inpatient_beds {total, available, freshness}`, `last_source_updated_at`. |
 
-Aturan penting: **unknown tetap `unknown`/`null`**. RS dari SATUSEHAT MSI belum punya data ICU/NICU/PICU/rawat inap/BPJS (MSI tidak menyediakannya), jadi `facility_summary` untuk RS nyata berisi `unknown`/`null` sampai ada data kurasi bersumber. Jangan menampilkan `unknown` sebagai "tidak tersedia". RS simulasi (`dataset=simulation|all`) berisi data lengkap untuk pengembangan UI dan berlabel `data_origin: "simulation"`. Rawat inap adalah layanan `rawat-inap` dan bed kategori `general`.
+Aturan penting: **unknown tetap `unknown`/`null`**. Sejak 0.2.1 RS nyata di staging berisi data contoh berlabel `simulation` (`facility_summary.data_origin`, `bpjs_data_origin`, dan `data_origin` tiap item); wajib ditampilkan sebagai "Simulasi". Penjelasan di bawah tentang RS nyata yang sepenuhnya `unknown` berlaku untuk environment yang belum diberi data contoh (mis. production 0.1.0). RS dari SATUSEHAT MSI belum punya data ICU/NICU/PICU/rawat inap/BPJS (MSI tidak menyediakannya), jadi `facility_summary` untuk RS nyata berisi `unknown`/`null` sampai ada data kurasi bersumber. Jangan menampilkan `unknown` sebagai "tidak tersedia". RS simulasi (`dataset=simulation|all`) berisi data lengkap untuk pengembangan UI dan berlabel `data_origin: "simulation"`. Rawat inap adalah layanan `rawat-inap` dan bed kategori `general`.
 
 ### `GET /regions`
 

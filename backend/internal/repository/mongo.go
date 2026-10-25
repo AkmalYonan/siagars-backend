@@ -168,6 +168,7 @@ type HospitalDoc struct {
 	Phone           *string  `bson:"phone"`
 	BPJS            *bool    `bson:"bpjs"`
 	// Upstream facility attributes; absent on seed/curated-only documents.
+	BPJSDataOrigin      *string    `bson:"bpjs_data_origin,omitempty"`
 	BPJSSourceURL       *string    `bson:"bpjs_source_url,omitempty"`
 	BPJSSourceUpdatedAt *time.Time `bson:"bpjs_source_updated_at,omitempty"`
 	FacilityClass       *string    `bson:"facility_class,omitempty"`
@@ -181,6 +182,21 @@ type HospitalDoc struct {
 }
 
 // Simulation returns provenance for synthetic data: no source URL and never verified.
+// bpjsOrigin labels where a BPJS value came from: the explicit field, else the hospital's own origin for
+// seeded simulation hospitals; null when BPJS itself is unknown.
+func bpjsOrigin(d HospitalDoc) *string {
+	if d.BPJS == nil {
+		return nil
+	}
+	if d.BPJSDataOrigin != nil {
+		return d.BPJSDataOrigin
+	}
+	if d.DataOrigin == "simulation" {
+		return &d.DataOrigin
+	}
+	return nil
+}
+
 func Simulation(at time.Time) ProvenanceDoc {
 	return ProvenanceDoc{DataOrigin: "simulation", SourceUpdatedAt: &at, SyncedAt: &at}
 }
@@ -258,7 +274,7 @@ func coded(code, name *string) *domain.Coded {
 func hospitalDTOs(docs []HospitalDoc, names, serviceNames map[string]string) []domain.Hospital {
 	hs := make([]domain.Hospital, 0, len(docs))
 	for _, d := range docs {
-		h := domain.Hospital{ID: d.ID, ExternalID: d.ExternalID, SourceNamespace: d.SourceNamespace, BPJSSourceURL: d.BPJSSourceURL, BPJSSourceUpdatedAt: d.BPJSSourceUpdatedAt, FacilityClass: coded(d.FacilityClass, d.FacilityClassName), FacilitySubtype: coded(d.FacilitySubtype, d.FacilitySubtypeName), Operational: d.Operational, Name: d.Name, Address: d.Address, CityCode: d.CityCode, CityName: names[d.CityCode], ProvinceCode: d.ProvinceCode, ProvinceName: names[d.ProvinceCode], Latitude: d.Latitude, Longitude: d.Longitude, Phone: d.Phone, BPJS: d.BPJS, Provenance: d.domain(), Services: []domain.Service{}, Beds: []domain.Bed{}}
+		h := domain.Hospital{ID: d.ID, ExternalID: d.ExternalID, SourceNamespace: d.SourceNamespace, BPJSDataOrigin: bpjsOrigin(d), BPJSSourceURL: d.BPJSSourceURL, BPJSSourceUpdatedAt: d.BPJSSourceUpdatedAt, FacilityClass: coded(d.FacilityClass, d.FacilityClassName), FacilitySubtype: coded(d.FacilitySubtype, d.FacilitySubtypeName), Operational: d.Operational, Name: d.Name, Address: d.Address, CityCode: d.CityCode, CityName: names[d.CityCode], ProvinceCode: d.ProvinceCode, ProvinceName: names[d.ProvinceCode], Latitude: d.Latitude, Longitude: d.Longitude, Phone: d.Phone, BPJS: d.BPJS, Provenance: d.domain(), Services: []domain.Service{}, Beds: []domain.Bed{}}
 		for _, s := range d.Services {
 			h.Services = append(h.Services, domain.Service{Slug: s.Slug, Name: serviceNames[s.Slug], Status: s.Status, Provenance: s.domain(), Version: s.Version})
 		}

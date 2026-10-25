@@ -51,6 +51,9 @@ type FacilitySummary struct {
 	PICU                string        `json:"picu"`
 	RawatInap           string        `json:"rawat_inap"`
 	BPJS                *bool         `json:"bpjs"`
+	// DataOrigin is "simulation" when any figure above is synthetic; otherwise the origin of the known
+	// figures, or null when nothing is known.
+	DataOrigin          *string       `json:"data_origin"`
 	InpatientBeds       InpatientBeds `json:"inpatient_beds"`
 	LastSourceUpdatedAt *time.Time    `json:"last_source_updated_at"`
 }
@@ -70,6 +73,7 @@ type Hospital struct {
 	BPJS            *bool    `json:"bpjs"`
 	DistanceKM      *float64 `json:"distance_km"`
 	// BPJS provenance is separate from the hospital's: it is set only by curation with a dated source.
+	BPJSDataOrigin      *string    `json:"bpjs_data_origin"`
 	BPJSSourceURL       *string    `json:"bpjs_source_url"`
 	BPJSSourceUpdatedAt *time.Time `json:"bpjs_source_updated_at"`
 	FacilityClass       *Coded     `json:"facility_class"`
@@ -194,14 +198,30 @@ func (h *Hospital) summary() FacilitySummary {
 			sum.LastSourceUpdatedAt = t
 		}
 	}
+	var origin string
+	note := func(o string) {
+		if o != "" && origin != "simulation" {
+			origin = o
+		}
+	}
+	if h.BPJS != nil && h.BPJSDataOrigin != nil {
+		note(*h.BPJSDataOrigin)
+	}
 	for _, s := range h.Services {
 		latest(s.SourceUpdatedAt)
+		if s.Status != "unknown" {
+			note(s.DataOrigin)
+		}
 	}
 	for _, b := range h.Beds {
 		latest(b.SourceUpdatedAt)
+		note(b.DataOrigin)
 		if b.Category == "general" {
 			sum.InpatientBeds = InpatientBeds{Total: b.Total, Available: b.Available, Freshness: b.Freshness}
 		}
+	}
+	if origin != "" {
+		sum.DataOrigin = &origin
 	}
 	return sum
 }

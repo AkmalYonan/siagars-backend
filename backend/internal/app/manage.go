@@ -23,7 +23,7 @@ import (
 )
 
 // Commands lists the management commands accepted by Manage.
-var Commands = []string{"migrate", "seed", "operator", "sync-satusehat", "curate"}
+var Commands = []string{"migrate", "seed", "operator", "sync-satusehat", "curate", "dummy-facilities"}
 
 // MinOperatorPassword is 12 bytes everywhere except local development, where 8 keeps throwaway
 // test accounts practical. Unset APP_ENV is treated as development, matching config.Load.
@@ -70,6 +70,12 @@ func Manage(command string) error {
 		if e = seed.Apply(ctx, p); e != nil {
 			return fmt.Errorf("seed failed; run migrate first on the intended demo database: %w", e)
 		}
+	case "dummy-facilities":
+		out, e := seed.ApplyDummyFacilities(ctx, p.DB, time.Now())
+		if e != nil {
+			return fmt.Errorf("dummy-facilities failed: %w", e)
+		}
+		fmt.Printf("dummy-facilities (data_origin=simulation): %d hospitals, %d service items, %d bed items, %d BPJS values in total (new or earlier); existing data was not overwritten\n", out.Hospitals, out.ServicesAdded, out.BedsAdded, out.BPJSSet)
 	case "operator":
 		email := strings.ToLower(strings.TrimSpace(os.Getenv("OPERATOR_EMAIL")))
 		password := os.Getenv("OPERATOR_PASSWORD")

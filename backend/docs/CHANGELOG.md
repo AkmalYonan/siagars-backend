@@ -2,6 +2,27 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## 0.2.1 (25 Okt 2026) - branch `develop` (staging)
+
+### Baru: data contoh fasilitas untuk RS nyata
+SATUSEHAT sandbox tidak menyediakan ICU/NICU/PICU/bed/rawat inap/BPJS, jadi RS nyata sebelumnya berisi `unknown`/`null` semua. Agar FE bisa membangun dan menguji UI dengan nama RS nyata, backend menempelkan **data contoh deterministik** (perintah `dummy-facilities`, hanya ke database dev/staging):
+- Layanan `icu`, `nicu`, `picu`, `igd-24h`, `ambulance`, `rawat-inap`; bed `general`/`icu`/`nicu`/`picu` (sebagian RS sengaja tanpa bed -> `null`); dan `bpjs`.
+- Peluang ketersediaan mengikuti kelas RS (A/B lebih lengkap), tetapi angkanya **bukan fakta**.
+- Semua item: `data_origin: "simulation"`, `source_url: null`, `verified_at: null`. `data_origin` RS tetap `satusehat_sandbox`.
+- Tidak menimpa data yang sudah ada (kurasi atau pembaruan operator). Mengulang perintah tidak mengubah apa pun.
+
+### Field baru (aditif)
+| Field | Isi |
+|---|---|
+| `bpjs_data_origin` (Hospital) | Asal nilai `bpjs`: `simulation`, `curated`, atau `null` bila `bpjs` null. |
+| `facility_summary.data_origin` | `simulation` bila ada angka contoh di ringkasan; asal data bersumber bila tidak; `null` bila tidak ada data. |
+
+### Yang harus dilakukan FE
+- Tampilkan label **"Simulasi"** di badge/ringkasan bila `facility_summary.data_origin == "simulation"` dan di BPJS bila `bpjs_data_origin == "simulation"`. Jangan menyajikannya sebagai fakta RS.
+- `freshness` data contoh dihitung dari `source_updated_at` seperti biasa, jadi berubah menjadi `stale` setelah 24 jam sejak data ditempel. Itu perilaku yang benar, bukan bug.
+- Filter `services=icu` kini mengembalikan RS nyata berstatus contoh `available`/`limited`. Hasil ini tetap simulasi.
+- Begitu backend mengkurasi data bersumber, nilai contoh diganti (field sama, `data_origin: "curated"`). Tidak perlu mengubah kode.
+
 ## 0.2.0 (25 Okt 2026) - branch `develop` (staging)
 
 ### Baru
