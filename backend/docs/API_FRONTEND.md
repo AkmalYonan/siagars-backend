@@ -18,7 +18,7 @@ Sumber kontrak resmi tetap [`openapi.yaml`](openapi.yaml). Bila dokumen ini berb
 
 Dokumentasi interaktif tersedia ketika backend berjalan:
 
-- Swagger UI: `http://localhost:8080/docs`
+- Dokumentasi interaktif (Scalar): `http://localhost:8080/docs`
 - OpenAPI runtime: `http://localhost:8080/docs/openapi.json`
 - Liveness: `http://localhost:8080/api/v1/health`
 - Readiness: `http://localhost:8080/api/v1/ready`

@@ -28,7 +28,7 @@ Aplikasi aslinya server persisten (`cmd/api`, `ListenAndServe`). Di Vercel yang 
 
 ## CI/CD
 
-- Setiap push ke `main` memicu build dan deploy produksi otomatis. Branch lain menghasilkan Preview deployment.
+- Setiap push ke `main` memicu build dan deploy produksi otomatis. Branch lain menghasilkan Preview deployment, kecuali `develop`: `vercel.json` menonaktifkan deploy untuk branch itu (`git.deploymentEnabled`), dipakai untuk pengembangan. Rilis = merge `develop` ke `main`.
 - Pengaturan proyek: **Root Directory = `backend`**, framework `null`, deploy dari Git `enabled`.
 - Catatan: `vercel link` dari CLI membuat proyek dengan `gitProviderOptions.createDeployments = disabled`. Pastikan sudah `enabled`, kalau tidak push tidak memicu deploy.
 - Rollback: Vercel dashboard > Deployments > pilih deployment sebelumnya > Promote to Production (atau `vercel rollback`).

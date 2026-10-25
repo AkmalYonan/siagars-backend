@@ -3,7 +3,7 @@
   "info": {
     "title": "SiagaRS Backend",
     "version": "0.1.0",
-    "description": "Baseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
+    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
   },
   "servers": [
     {
@@ -250,7 +250,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/ready": {
@@ -491,7 +494,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/services": {
@@ -723,7 +729,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/hospitals": {
@@ -1077,7 +1086,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/hospitals/compare": {
@@ -1224,7 +1236,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/hospitals/{id}": {
@@ -1478,7 +1493,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/referrals/lookup": {
@@ -1720,7 +1738,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Publik"
+        ]
       }
     },
     "/auth/login": {
@@ -1970,7 +1991,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Auth"
+        ]
       }
     },
     "/auth/me": {
@@ -2203,7 +2227,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Auth"
+        ]
       }
     },
     "/auth/csrf": {
@@ -2445,7 +2472,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Auth"
+        ]
       }
     },
     "/auth/logout": {
@@ -2706,7 +2736,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Auth"
+        ]
       }
     },
     "/admin/referrals": {
@@ -2942,7 +2975,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
     "/admin/referrals/{id}/status": {
@@ -3221,7 +3257,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
     "/admin/hospitals/{id}/services/{slug}": {
@@ -3508,7 +3547,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
     "/admin/hospitals/{id}/beds/{category}": {
@@ -3796,7 +3838,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     }
   },
@@ -4495,5 +4540,19 @@
         "additionalProperties": false
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Publik",
+      "description": "Tanpa autentikasi: health, daftar layanan, pencarian/detail/perbandingan RS, dan lookup tracking."
+    },
+    {
+      "name": "Auth",
+      "description": "Login operator, sesi, token CSRF, dan logout. Login memeriksa Origin dan dibatasi rate limit."
+    },
+    {
+      "name": "Admin",
+      "description": "Perlu sesi operator + `X-CSRF-Token` pada mutasi. Scope RS operator diperiksa server pada setiap request."
+    }
+  ]
 }

@@ -25,6 +25,15 @@ import (
 // Commands lists the management commands accepted by Manage.
 var Commands = []string{"migrate", "seed", "operator", "sync-satusehat", "curate"}
 
+// MinOperatorPassword is 12 bytes everywhere except local development, where 8 keeps throwaway
+// test accounts practical. Unset APP_ENV is treated as development, matching config.Load.
+func MinOperatorPassword(appEnv string) int {
+	if appEnv == "" || appEnv == "development" {
+		return 8
+	}
+	return 12
+}
+
 // Manage runs one management command against MongoDB. It never starts the API.
 func Manage(command string) error {
 	if command == "curate" {
@@ -73,8 +82,8 @@ func Manage(command string) error {
 			}
 		}
 		address, err := mail.ParseAddress(email)
-		if err != nil || address.Address != email || len(email) > 254 || len(password) < 12 || len(password) > 72 || len(hospitals) == 0 {
-			return fmt.Errorf("set OPERATOR_EMAIL, OPERATOR_PASSWORD (12..72 bytes), OPERATOR_HOSPITAL_IDS (comma-separated UUIDs)")
+		if err != nil || address.Address != email || len(email) > 254 || len(password) < MinOperatorPassword(os.Getenv("APP_ENV")) || len(password) > 72 || len(hospitals) == 0 {
+			return fmt.Errorf("set OPERATOR_EMAIL, OPERATOR_PASSWORD (12..72 bytes; 8..72 only when APP_ENV=development), OPERATOR_HOSPITAL_IDS (comma-separated UUIDs)")
 		}
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 		if err != nil {

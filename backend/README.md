@@ -18,7 +18,7 @@ Go 1.27.1 (toolchain yang terpasang dan diuji), net/http ServeMux, MongoDB Atlas
 - migrations: file JSON bernomor (create collection + validator `$jsonSchema`, index) embedded, lock dokumen dan checksum.
 - seed: fixture sintetis idempotent.
 - internal/app: logika bersama untuk root main, cmd/api dan cmd/manage.
-- docs/openapi.yaml: kontrak OpenAPI 3.0.3 (JSON adalah subset YAML), di-embed dan disajikan Swagger UI di /docs.
+- docs/openapi.yaml: kontrak OpenAPI 3.0.3 (JSON adalah subset YAML), di-embed dan disajikan Scalar API Reference di /docs.
 - tests/integration: pengujian DB dalam database temporer terisolasi.
 
 ## Cara cepat
@@ -32,12 +32,26 @@ go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat
 
 `go run .` membaca `.env` tanpa menimpa variabel yang sudah di-set di terminal, jadi override sementara tetap bisa, misalnya `$env:SATUSEHAT_ENABLED='true'; $env:SATUSEHAT_KABKOTA='jabodetabek'; go run . sync-satusehat`. Log hanya mencatat jumlah variabel yang dimuat, bukan nilainya. `cmd/api` dan `cmd/manage` tetap tersedia dan sengaja tidak memuat `.env` (untuk container/produksi).
 
-## Dokumentasi API (Swagger)
+## Dokumentasi API (Scalar)
 
 Saat API berjalan, buka http://localhost:8080/docs. Spec mentah ada di http://localhost:8080/docs/openapi.json (dari `docs/openapi.yaml` yang di-embed ke binary, dengan server di-set relatif `/api/v1`). Kedua path berada di luar `/api/v1`, jadi tidak mengubah kontrak API; di deployment same-origin, reverse proxy hanya meneruskan `/api/v1/*`, sehingga /docs hanya tersedia bila port Go diakses langsung.
 
-- Aset Swagger UI dimuat dari jsDelivr (`swagger-ui-dist@5.17.14`) dengan hash SRI dan CSP ketat; halaman butuh internet untuk aset tersebut.
+- UI Scalar (3 kolom, pencarian Ctrl+K, dark mode, contoh kode, tombol Test Request) dimuat dari jsDelivr (`@scalar/api-reference@1.67.0`) dengan hash SRI dan CSP ketat; halaman butuh internet untuk aset tersebut. Endpoint dikelompokkan per tag Publik/Auth/Admin.
 - "Try it out" untuk endpoint GET langsung jalan. Login dan mutasi memeriksa `Origin == PUBLIC_ORIGIN`; dari halaman /docs Origin-nya `http://localhost:8080`, jadi akan 403 kecuali saat development PUBLIC_ORIGIN di-set ke `http://localhost:8080`. Mutasi juga butuh header X-CSRF-Token dari `/auth/csrf`.
+
+## Development vs Production
+
+Kode sama, environment berbeda lewat env var dan database:
+
+| | Development | Production |
+|---|---|---|
+| Jalan di | laptop (`go run .`) | Vercel (branch `main`) |
+| Config | `backend/.env` (git-ignored) | env var dashboard Vercel |
+| Database | `siagars_dev` | `siagars` |
+| `PUBLIC_ORIGIN` | `http://localhost:3000` | `https://siagars-backend.vercel.app` |
+| Operator | akun uji lokal (password min 8 byte saat `APP_ENV=development`) | akun kuat, min 12 byte |
+
+Alur: kerja dan push ke branch `develop` (tidak memicu deploy Vercel, lihat `vercel.json`); merge `develop` ke `main` hanya saat siap rilis. Setup DB dev: set `MONGODB_DATABASE=siagars_dev` di `.env`, lalu `go run . migrate`, `go run . seed`, `go run . operator`.
 
 ## Jalankan lokal (PowerShell)
 

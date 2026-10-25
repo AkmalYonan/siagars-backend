@@ -125,7 +125,7 @@ func TestDocs(t *testing.T) {
 		return w
 	}
 	page := get("/docs")
-	if page.Code != 200 || !strings.HasPrefix(page.Header().Get("Content-Type"), "text/html") || !strings.Contains(page.Body.String(), "swagger-ui-bundle.js") || !strings.Contains(page.Header().Get("Content-Security-Policy"), "script-src 'self' https://cdn.jsdelivr.net") {
+	if page.Code != 200 || !strings.HasPrefix(page.Header().Get("Content-Type"), "text/html") || !strings.Contains(page.Body.String(), "@scalar/api-reference") || !strings.Contains(page.Body.String(), `data-url="/docs/openapi.json"`) || !strings.Contains(page.Header().Get("Content-Security-Policy"), "script-src https://cdn.jsdelivr.net") {
 		t.Fatal(page.Code, page.Header())
 	}
 	if strings.Contains(page.Body.String(), "<script>") {
@@ -139,9 +139,6 @@ func TestDocs(t *testing.T) {
 	}
 	if spec.Code != 200 || json.Unmarshal(spec.Body.Bytes(), &doc) != nil || doc.OpenAPI != "3.0.3" || len(doc.Servers) != 1 || doc.Servers[0]["url"] != "/api/v1" || len(doc.Paths) != 15 {
 		t.Fatal(spec.Code, doc.OpenAPI, doc.Servers, len(doc.Paths))
-	}
-	if w := get("/docs/swagger-init.js"); w.Code != 200 || !strings.Contains(w.Body.String(), "/docs/openapi.json") {
-		t.Fatal(w.Code)
 	}
 	if w := get("/docs/"); w.Code != 301 || w.Header().Get("Location") != "/docs" {
 		t.Fatal(w.Code)

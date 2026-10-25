@@ -706,10 +706,11 @@ func (l *limiter) allow(key string, max int, window time.Duration, now time.Time
 }
 func (l *limiter) clear(key string) { l.mu.Lock(); defer l.mu.Unlock(); delete(l.entries, key) }
 
-// Swagger UI assets load from a pinned, integrity-checked CDN URL; everything else is same-origin.
-const docsCSP = "default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data: https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+// The Scalar bundle loads from a pinned, integrity-checked CDN URL; everything else is same-origin.
+// 'unsafe-eval' is required by the bundled Vue runtime; the page has no other script.
+const docsCSP = "default-src 'none'; script-src https://cdn.jsdelivr.net 'unsafe-eval'; style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data: https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
-// registerDocs serves Swagger UI at /docs and the embedded OpenAPI contract at /docs/openapi.json.
+// registerDocs serves the Scalar API reference at /docs and the embedded OpenAPI contract at /docs/openapi.json.
 // Both live outside /api/v1, so the API contract itself is unchanged.
 func registerDocs(mux *http.ServeMux) {
 	spec := docs.OpenAPI
@@ -730,10 +731,9 @@ func registerDocs(mux *http.ServeMux) {
 			w.Write(body)
 		}
 	}
-	mux.HandleFunc("GET /docs", serve("text/html; charset=utf-8", docs.SwaggerPage))
+	mux.HandleFunc("GET /docs", serve("text/html; charset=utf-8", docs.ReferencePage))
 	mux.HandleFunc("GET /docs/{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs", http.StatusMovedPermanently)
 	})
 	mux.HandleFunc("GET /docs/openapi.json", serve("application/json; charset=utf-8", spec))
-	mux.HandleFunc("GET /docs/swagger-init.js", serve("text/javascript; charset=utf-8", docs.SwaggerInit))
 }
