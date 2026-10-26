@@ -125,7 +125,7 @@ Diisi sesuai bukti pada hari draft dibekukan. Status backend per 26 Oktober 2026
 - `backend/docs/openapi.yaml` - kontrak API
 - `backend/docs/DECISIONS.md` - keputusan implementasi
 - `backend/docs/CHANGELOG.md` - riwayat versi API untuk frontend
-- `backend/docs/API_FRONTEND.md` - panduan integrasi frontend
+- `backend/docs/archive/API_FRONTEND.md` - panduan integrasi frontend
 - `backend/deploy/VERCEL.md` - deployment production dan staging
 
 ## Lisensi

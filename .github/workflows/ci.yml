@@ -1,0 +1,70 @@
+# BE-04: gofmt, vet, unit + contract tests and the race detector on every PR and push to develop/main.
+# MongoDB integration tests run only when the TEST_MONGODB_URI secret is configured; each run creates and
+# drops its own siagars_test_<ts> database.
+name: backend-ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "File belum di-gofmt:"; echo "$unformatted"; exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go build
+        run: go build ./...
+      - name: go test
+        run: go test ./...
+      - name: go test -race
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+    # Secrets are not passed to PRs from forks, so the job is skipped there instead of failing.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    env:
+      TEST_MONGODB_URI: ${{ secrets.TEST_MONGODB_URI }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: MongoDB integration
+        run: |
+          if [ -z "$TEST_MONGODB_URI" ]; then
+            echo "::notice::TEST_MONGODB_URI belum di-set; integrasi MongoDB dilewati."
+            exit 0
+          fi
+          go test -count=1 ./tests/integration/...
