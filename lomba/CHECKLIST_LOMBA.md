@@ -1,6 +1,6 @@
 # Checklist Lomba - SiagaRS (WIA, MIA 2026)
 
-Disusun 24 Oktober 2026 dari empat PDF di folder GuideBook (Guidebook WIA, PPT Technical Meeting MIA 2026, Q&A MIA 2026, Mentoring Class) dan scope berjalan di `backend/PRD.md`. Aturan sudah dicocokkan ulang dengan teks PDF sebelum ditulis. Jika dokumen panitia berubah, panitia berhak memperbarui aturan dan akan mengumumkannya lewat email resmi atau website kompetisi (Guidebook, Syarat Umum); itu yang berlaku.
+Disusun 24 Oktober 2026 (status bukti diperbarui 26 Oktober 2026 dari `backend/`) dari empat PDF di folder GuideBook (Guidebook WIA, PPT Technical Meeting MIA 2026, Q&A MIA 2026, Mentoring Class) dan scope berjalan di `backend/PRD.md`. Aturan sudah dicocokkan ulang dengan teks PDF sebelum ditulis. Jika dokumen panitia berubah, panitia berhak memperbarui aturan dan akan mengumumkannya lewat email resmi atau website kompetisi (Guidebook, Syarat Umum); itu yang berlaku.
 
 Catatan sumber: "Guidebook" = Guidebook WIA.pdf; "TM" = PPT Technical Meeting; "Q&A" = Q_A MIA 2026; "Mentoring" = [WIA] Mentoring Class.
 
@@ -26,7 +26,7 @@ Catatan sumber: "Guidebook" = Guidebook WIA.pdf; "TM" = PPT Technical Meeting; "
 
 Jadwal internal tim (usulan di Scope_MVP, bukan aturan panitia): QA responsif dan aksesibilitas 30 Okt; freeze draft 31 Okt.
 
-Hari ini 24 Oktober 2026: sisa 8 hari ke draft dan 18 hari ke final.
+Per 26 Oktober 2026: sisa 6 hari ke draft dan 16 hari ke final.
 
 ## 2. Syarat umum (yang relevan untuk tim)
 
@@ -74,7 +74,7 @@ Dikumpulkan lewat website MIA 2026.
 - [ ] 30 halaman dihitung dari cover sampai penutup; lampiran di luar hitungan; boleh mengembangkan isi di luar template selama poin inti panitia tersampaikan (Q&A no. 7)
 - [ ] Seluruh komponen wajib, termasuk landing page, lengkap pada tahap final (Q&A no. 30)
 - [ ] Figma tidak wajib untuk WIA (Q&A no. 24 dan 36)
-- [ ] Website dapat dibuka di Chrome/Edge/Firefox dan dapat diakses online (Guidebook bagian K). Scope_MVP mencatat hosting dan domain belum dikonfirmasi
+- [ ] Website dapat dibuka di Chrome/Edge/Firefox dan dapat diakses online (Guidebook bagian K). Backend online di `https://siagars-backend.vercel.app`, frontend di `https://frontend-siagars.vercel.app`; uji lintas browser frontend belum tercatat
 
 ## 5. Rubrik babak penyisihan (100%)
 
@@ -82,13 +82,13 @@ Tabel Guidebook dan TM konsisten:
 
 | Kriteria | Bobot | Yang dinilai (ringkas dari panitia) | Bukti SiagaRS yang tersedia / yang masih dibutuhkan |
 |---|---|---|---|
-| Orisinalitas ide dan konsep | 20% | keunikan ide dan kreativitas konsep; tidak meniru; relevan dengan tema | provenance per informasi dan tracking sintetis; **perlu** bahan pembanding "solusi sejenis" yang benar-benar diriset (belum ada di dokumen) |
-| Fungsionalitas website | 25% | navigasi mudah, semua fitur berjalan baik, responsif di beberapa perangkat | API baseline berjalan lokal (smoke test); **perlu** bukti frontend, responsif 360/768/1440 px dan E2E |
+| Orisinalitas ide dan konsep | 20% | keunikan ide dan kreativitas konsep; tidak meniru; relevan dengan tema | provenance per informasi, label simulasi per item, tracking sintetis; **perlu** bahan pembanding "solusi sejenis" yang benar-benar diriset (belum ada di dokumen) |
+| Fungsionalitas website | 25% | navigasi mudah, semua fitur berjalan baik, responsif di beberapa perangkat | API 0.3.0 (22 operasi) online di Vercel; uji publik 32 pemeriksaan + login/mutasi operator 15 pemeriksaan lulus di production 25 Okt; **perlu** bukti frontend, responsif 360/768/1440 px dan E2E UI |
 | Desain dan estetika | 20% | layout, warna, tipografi harmonis; daya tarik visual dan pengalaman pengguna | **perlu** bukti dari frontend (di luar dokumen backend) |
-| Konten dan informasi | 20% | informasi jelas, relevan, akurat; materi rapi dan mudah dipahami | label asal data, kesegaran, null vs 0; data nyata MSI Sandbox 516 RS Jabodetabek tanpa layanan/bed/BPJS |
+| Konten dan informasi | 20% | informasi jelas, relevan, akurat; materi rapi dan mudah dipahami | label asal data, kesegaran, null vs 0, `facility_summary`; data nyata MSI Sandbox 516 RS Jabodetabek dengan kelas/jenis RS; layanan/bed/BPJS RS nyata masih data contoh berlabel simulasi |
 | Kesesuaian tema dan subtema | 15% | sesuai tema lomba; representasi nilai edukasi, budaya atau teknologi | **perlu** keputusan subtema resmi (lihat A5) |
 
-Total 100%. Poin tambahan menurut Q&A: backend dinilai plus (no. 34); data nyata atau mendekati nyata sangat disarankan (no. 40); satu subtema lebih disarankan (no. 31).
+Total 100%. Poin tambahan menurut Q&A: backend dinilai plus (no. 34; dokumentasi API publik tersedia di `/docs`); data nyata atau mendekati nyata sangat disarankan (no. 40); satu subtema lebih disarankan (no. 31).
 
 ## 6. Rubrik babak final (tabel panitia tidak konsisten)
 
@@ -118,16 +118,18 @@ Kontak panitia di Guidebook: WhatsApp Intan dan Nazla (nomor tertera di bagian M
 | A7 | Rubrik penyisihan | 20+25+20+20+15 = 100%, konsisten di kedua dokumen | Tidak perlu ditanyakan; hanya konfirmasi bila ada revisi |
 | A8 | Typo 2025 | "WIA_FDSMIA2025" pada nama berkas dan "7 November 2025" pada feedback di Guidebook bagian J | Konfirmasi bahwa semua penyebutan 2025 itu 2026 |
 | A9 | Surat orisinalitas dan materai | Bermaterai Rp10.000, format PDF/foto belum disebut | Apakah materai fisik di-scan atau materai elektronik diterima |
-| A10 | Hosting | Final menyatakan prototipe harus bisa diakses online; Scope_MVP: hosting, domain dan tile peta belum dikonfirmasi | Apakah tautan lokal/tunnel diterima, atau perlu hosting publik tetap (keputusan deploy ada pada tim, bukan agen) |
-| A11 | Data riil | Q&A no. 5 dan 40: dummy boleh, data nyata disarankan. Data MSI Sandbox bukan data produksi | Apakah data Sandbox SATUSEHAT dianggap "data nyata" oleh juri |
+| A10 | Hosting | Final menyatakan prototipe harus bisa diakses online. Sudah ada hosting publik Vercel: backend `siagars-backend.vercel.app`, frontend `frontend-siagars.vercel.app` (subdomain vercel.app, bukan domain kustom) | Apakah subdomain `vercel.app` diterima atau perlu domain kustom |
+| A11 | Data riil | Q&A no. 5 dan 40: dummy boleh, data nyata disarankan. Data MSI Sandbox bukan data produksi; layanan/bed/BPJS RS nyata adalah data contoh berlabel simulasi; cek BPJS memakai peserta sintetis | Apakah data Sandbox SATUSEHAT (nama/alamat/kelas RS nyata) dengan data fasilitas contoh berlabel dianggap "data nyata/mendekati nyata" oleh juri |
 
 ## 9. Tugas tim yang bergantung pada checklist ini
 
 - [ ] Putuskan subtema (usulan: satu subtema; dokumen belum menetapkan)
-- [ ] Putuskan satu repo atau dua repo publik (backend Go dan frontend Next.js)
-- [ ] Audit repo publik: tidak ada `.env`, `atlas-credentials.env`, credential SATUSEHAT atau data pasien di berkas maupun riwayat git
+- [ ] Putuskan satu repo atau dua repo publik (backend Go dan frontend Next.js); root `README.md` repo backend sudah memenuhi empat isi wajib
+- [ ] Audit repo publik: tidak ada `.env`, `atlas-credentials.env`, credential SATUSEHAT, `BPJS_HISTORY_KEY`, password operator atau data pasien di berkas maupun riwayat git
 - [ ] Ambil screenshot nyata (minimal landing + 1 halaman) dari aplikasi yang berjalan
 - [ ] Kirim pertanyaan A1, A3, A4, A6 ke panitia sebelum 1 November; A2, A9 sebelum 11 November
 - [ ] Wawancara 3-5 orang (usulan Scope_MVP) bila ingin klaim masalah didukung data; tanpa itu tetap sebut hipotesis
 - [ ] Jalankan uji usability (target 4 dari 5 peserta, 60 detik) hanya jika ingin menyebut hasilnya; tanpa itu tulis "target"
 - [ ] Siapkan skrip demo offline cadangan untuk final
+- [ ] Putuskan apakah cek BPJS simulasi (API 0.3.0) dirilis ke production sebelum draft/final; butuh migration 005, `seed`, dan `BPJS_HISTORY_KEY` production
+- [ ] Sebelum demo, segarkan data contoh fasilitas bila perlu: kesegarannya otomatis menjadi `stale` 24 jam setelah ditempel (perilaku benar, tetapi perlu dijelaskan saat demo)

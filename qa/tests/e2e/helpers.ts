@@ -30,6 +30,8 @@ export interface Hospital {
   longitude: number | null;
   data_origin: string;
   freshness: string;
+  bpjs_data_origin?: string | null;
+  facility_summary?: { data_origin: string | null; [key: string]: unknown };
   services: { slug: string; status: string; data_origin: string; freshness: string; version: number }[];
   beds: { category: string; total: number | null; available: number | null; data_origin: string; freshness: string; version: number }[];
 }

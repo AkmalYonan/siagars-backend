@@ -1,12 +1,14 @@
 # QA Checklist - SiagaRS V0.1
 
-Dipakai untuk QA manual dan sebagai acuan test UI Playwright setelah frontend ada. Baseline PRD 23 Oktober 2026. Semua data adalah **skenario sintetis**; jangan memasukkan data pasien nyata saat pengujian.
+Dipakai untuk QA manual dan sebagai acuan test UI Playwright setelah frontend ada. Baseline PRD 23 Oktober 2026, diperbarui 26 Oktober 2026 untuk API 0.3.0 (`backend/docs/CHANGELOG.md`). Semua data adalah **skenario sintetis**; jangan memasukkan data pasien nyata atau NIK asli saat pengujian.
+
+Target environment: lokal (`http://localhost:8080`), staging `develop` (API 0.3.0, butuh header bypass Vercel), atau production `https://siagars-backend.vercel.app` (API 0.2.1, tanpa cek BPJS). Frontend: `https://frontend-siagars.vercel.app`.
 
 Cara pakai: salin tabel ke catatan uji, isi `Lulus / Gagal / N/A`, catat versi build, browser dan tanggal. Kriteria "Lulus" harus teramati, bukan diasumsikan.
 
 ## 0. Prasyarat
 
-- [ ] Backend berjalan dengan database **uji** (bukan database `siagars` utama) dan seed simulasi dimuat.
+- [ ] Backend berjalan dengan database **uji** (bukan database `siagars` utama), migration 001-005 diterapkan, dan seed simulasi dimuat (30 RS, SR-DEMO-001, peserta BPJS sintetis).
 - [ ] Akun operator demo dibuat lokal; credential hanya dari environment (`OPERATOR_EMAIL`, `OPERATOR_PASSWORD`), tidak dicatat di dokumen ini.
 - [ ] `go test ./tests/contract/...` lulus (uji kontrak tanpa Atlas).
 - [ ] `npx playwright test --list` menampilkan spesifikasi; test UI masih `skip` sampai `SIAGARS_UI=1`.
@@ -26,7 +28,7 @@ Cara pakai: salin tabel ke catatan uji, isi `Lulus / Gagal / N/A`, catat versi b
 | A9 | Peta bukan satu-satunya jalur: semua informasi dan aksi peta tersedia di daftar (1.1.1, 2.1.1); peta punya alternatif teks | Nonaktifkan peta | |
 | A10 | Tidak ada konten berkedip > 3x/detik; animasi menghormati `prefers-reduced-motion` (2.3.1, 2.3.3) | Aktifkan reduced motion di OS | |
 | A11 | Bahasa halaman `lang="id"`; judul halaman unik per rute (3.1.1, 2.4.2) | Inspeksi `<html>`, tab title | |
-| A12 | Alat otomatis: aXe/Lighthouse tanpa pelanggaran `critical/serious` pada halaman cari, detail, lacak, login, dashboard operator | Jalankan alat; catat sisa pelanggaran | |
+| A12 | Alat otomatis: aXe/Lighthouse tanpa pelanggaran `critical/serious` pada halaman cari, detail, lacak, cek BPJS, login, dashboard operator | Jalankan alat; catat sisa pelanggaran | |
 
 ## 2. Responsif (360 / 768 / 1440 px)
 
@@ -34,7 +36,7 @@ Ulangi pada setiap lebar: **360x740**, **768x1024**, **1440x900**. Juga uji orie
 
 | # | Kriteria | 360 | 768 | 1440 |
 |---|---|---|---|---|
-| R1 | Tidak ada scroll horizontal pada halaman cari, detail, lacak, login, dashboard | | | |
+| R1 | Tidak ada scroll horizontal pada halaman cari, detail, lacak, cek BPJS, login, dashboard, riwayat BPJS | | | |
 | R2 | Daftar RS dan peta tersusun masuk akal (mobile: daftar dan peta bisa dialihkan, bukan saling menutupi) | | | |
 | R3 | Filter (layanan, BPJS, bed, wilayah) tetap terjangkau dan terbaca; tidak terpotong | | | |
 | R4 | Kartu RS menampilkan nama, kota, layanan ringkas, label sumber/kesegaran tanpa terpotong; nama panjang membungkus | | | |
@@ -77,6 +79,7 @@ Ulangi pada setiap lebar: **360x740**, **768x1024**, **1440x900**. Juga uji orie
 | # | Kriteria | Hasil |
 |---|---|---|
 | L1 | Setiap RS/layanan/bed dengan `data_origin=simulation` menampilkan label "Simulasi" yang terlihat tanpa interaksi tambahan, juga ketika freshness `fresh` | |
+| L1a | RS nyata (`satusehat_sandbox`) dengan data contoh: badge/ringkasan berlabel "Simulasi" bila `facility_summary.data_origin=simulation`, BPJS berlabel "Simulasi" bila `bpjs_data_origin=simulation`; nama RS nyata tidak membuat data contoh tampak faktual | |
 | L2 | Label origin lain (`curated`, `satusehat_sandbox`, `satusehat_production`) dibedakan dan punya penjelasan singkat | |
 | L3 | Kesegaran ditampilkan per item dengan waktu `source_updated_at` (zona Asia/Jakarta) dan `meta.as_of`; bukan `synced_at` | |
 | L4 | `verified_at` hanya tampil sebagai "terverifikasi" bila terisi; `null` tidak tampil sebagai terverifikasi | |
@@ -84,7 +87,22 @@ Ulangi pada setiap lebar: **360x740**, **768x1024**, **1440x900**. Juga uji orie
 | L6 | Halaman lacak menyatakan jelas "skenario sintetis, bukan rujukan nyata"; tidak ada klaim medis/diagnosis/triase | |
 | L7 | Urutan "kecocokan" tidak diklaim sebagai kualitas klinis atau jaminan diterima; jarak berlabel garis lurus, bukan ETA | |
 | L8 | Daftar default tidak mencampur data simulasi dengan data nyata (`dataset=real`); tampilan skenario demo mengirim `dataset=simulation` atau `all` dan memberi label | |
-| L9 | Tidak ada data pasien nyata, NIK, atau identitas operator pada halaman publik (cek juga tab Network) | |
+| L9 | Tidak ada data pasien nyata, NIK lengkap, atau identitas operator pada halaman publik (cek juga tab Network); hasil cek BPJS hanya menampilkan NIK/nama tersamar | |
+
+## 5a. Cek BPJS simulasi dan riwayat operator (API 0.3.0)
+
+Data demo (fiktif, NIK berawalan `9999`): `9999010101900001` / Budi Santoso / 1990-01-01 (active), `9999020202850002` / Siti Aminah / 1985-02-02 (inactive), `9999030303950003` / Agus Pratama / 1995-03-03 (active, sebagian null). Lengkapnya di `backend/docs/HANDOVER_BE-TO-FE_BPJS.md`. Setiap cek yang valid **dicatat** di riwayat; pakai hanya data demo.
+
+| # | Kriteria | Hasil |
+|---|---|---|
+| B1 | Halaman menyatakan jelas "simulasi, bukan BPJS Kesehatan", meminta data demo, dan memberi tahu input dicatat untuk riwayat operator dan dihapus otomatis setelah 30 hari | |
+| B2 | Hasil `found` menampilkan NIK/nama tersamar, status, jenis kepesertaan, kelas, faskes; `null` tampil "Belum diketahui" | |
+| B3 | `not_found` tampil sama untuk NIK, nama, atau tanggal lahir yang salah (tidak membocorkan field mana yang salah); bukan halaman 404 | |
+| B4 | Validasi 422 (NIK bukan 16 digit, tanggal masa depan) tampil per field dan tidak mengulang input di pesan | |
+| B5 | Input tidak masuk URL, `localStorage`, atau log konsol; form dikosongkan setelah hasil | |
+| B6 | 429 setelah 10 cek/menit: pesan tunggu, tombol tidak spam | |
+| B7 | Riwayat operator hanya untuk operator login; daftar tersamar dengan `repeat_count` | |
+| B8 | "Lihat data asli" meminta password ulang; password salah 401, entri tanpa data asli 409 "Hanya data tersamar yang tersedia"; data asli hilang saat dialog ditutup | |
 
 ## 6. Skenario usability 60 detik
 
@@ -105,9 +123,11 @@ Catat juga: berapa partisipan menemukan label simulasi tanpa diminta, dan apakah
 - [ ] Cookie `siagars_session` HttpOnly, Path=/api/v1, SameSite=Lax (cek tab Application).
 - [ ] Token CSRF dan session tidak muncul di URL, `localStorage`, atau log konsol.
 - [ ] Kode tracking tidak masuk URL (lookup memakai body POST) dan tidak tersimpan di riwayat/analitik.
+- [ ] NIK/nama/tanggal lahir cek BPJS hanya dikirim lewat body POST, tidak di URL atau analitik.
+- [ ] Header `X-Frame-Options: DENY` dan `Referrer-Policy: no-referrer` ada pada respons API.
 - [ ] Pesan galat login sama untuk email salah dan password salah.
 - [ ] Tombol/aksi operator disembunyikan untuk non-operator **dan** server tetap menolak (diuji API: 401/403).
 
 ## 8. Pelaporan
 
-Untuk setiap kegagalan catat: ID checklist, langkah, hasil aktual vs diharapkan, lebar viewport, browser/OS, bukti (tangkapan layar/trace Playwright). Kegagalan A2, S4, S13, L1, L6, L9 bersifat blokir rilis demo.
+Untuk setiap kegagalan catat: ID checklist, langkah, hasil aktual vs diharapkan, lebar viewport, browser/OS, bukti (tangkapan layar/trace Playwright). Kegagalan A2, S4, S13, L1, L1a, L6, L9, B1, B3 bersifat blokir rilis demo.

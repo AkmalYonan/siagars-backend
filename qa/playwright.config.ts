@@ -2,9 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 // Semua nilai environment-specific datang dari env; tidak ada credential di repo.
 //   SIAGARS_BASE_URL      origin aplikasi (reverse proxy same-origin atau Go langsung), default http://localhost:8080
+//                         production https://siagars-backend.vercel.app masih API 0.2.1: test cek BPJS (0.3.0) otomatis di-skip
 //   SIAGARS_PUBLIC_ORIGIN nilai header Origin untuk mutasi; harus sama dengan PUBLIC_ORIGIN backend (default = base URL)
 //   OPERATOR_EMAIL / OPERATOR_PASSWORD   akun operator demo lokal (opsional; test operator di-skip tanpa ini)
-//   E2E_ALLOW_MUTATION=1  izinkan test yang mengubah data (status rujukan) pada database yang sedang dipakai backend
+//   E2E_ALLOW_MUTATION=1  izinkan test yang mengubah data (status rujukan, riwayat cek BPJS) pada database yang sedang dipakai backend
 //   SIAGARS_UI=1          aktifkan test UI setelah frontend tersedia (saat ini semua test UI di-skip)
 const baseURL = process.env.SIAGARS_BASE_URL ?? 'http://localhost:8080';
 
