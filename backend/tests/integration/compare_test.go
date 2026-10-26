@@ -27,13 +27,13 @@ func TestCompareAgainstMongo(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	zero, ten := 0, 10
 	src := func(d time.Duration) *time.Time { v := now.Add(-d); return &v }
-	curated := repository.HospitalDoc{ID: "40000000-0000-4000-8000-000000000001", Name: "RS Kurasi Uji", CityCode: "31.71", ProvinceCode: "31",
+	curated := repository.HospitalDoc{ID: "40000000-0000-4000-8000-000000000001", Name: "RS Kurasi Uji", CityCode: "3171", ProvinceCode: "31",
 		ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "curated", SourceUpdatedAt: src(2 * time.Hour)}, Services: []repository.ServiceDoc{{Slug: "icu", Status: "limited", ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "curated", SourceUpdatedAt: src(time.Minute)}, Version: 1}},
 		Beds: []repository.BedDoc{
 			{Category: "icu", Total: &ten, Available: &zero, ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "curated", SourceUpdatedAt: src(time.Minute)}, Version: 1},
 			{Category: "nicu", ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "curated"}, Version: 1}}}
 	ext, ns := "ext-1", "test-ns"
-	sandbox := repository.HospitalDoc{ID: "40000000-0000-4000-8000-000000000002", Name: "RS Sandbox Uji", CityCode: "31.71", ProvinceCode: "31", ExternalID: &ext, SourceNamespace: &ns,
+	sandbox := repository.HospitalDoc{ID: "40000000-0000-4000-8000-000000000002", Name: "RS Sandbox Uji", CityCode: "3171", ProvinceCode: "31", ExternalID: &ext, SourceNamespace: &ns,
 		ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "satusehat_sandbox"}, Services: []repository.ServiceDoc{}, Beds: []repository.BedDoc{}}
 	if _, e := p.DB.Collection("hospitals").InsertMany(ctx, []any{curated, sandbox}); e != nil {
 		t.Fatal(e)

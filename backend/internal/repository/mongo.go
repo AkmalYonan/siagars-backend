@@ -28,8 +28,8 @@ var (
 type Mongo struct {
 	Client *mongo.Client
 	DB     *mongo.Database
-	// history encrypts BPJS check input; nil keeps only masked data.
-	history *HistoryCipher
+	// history fingerprints the NIK of BPJS checks; nil stores no fingerprint. Raw input is never stored.
+	history *HistoryHasher
 }
 
 // Open configures the client lazily; the first operation establishes the connection.
@@ -383,7 +383,10 @@ func (m *Mongo) hospitalIDs(ctx context.Context, operator string) ([]string, err
 	}
 	return op.HospitalIDs, e
 }
-func (m *Mongo) Referrals(ctx context.Context, operator string) ([]domain.Referral, error) {
+
+// Referrals lists the operator's referrals with the owner hospital's name. Names come from one batched
+// query over the operator's hospitals, never one query per referral.
+func (m *Mongo) Referrals(ctx context.Context, operator string) ([]domain.AdminReferral, error) {
 	ids, e := m.hospitalIDs(ctx, operator)
 	if e != nil {
 		return nil, e
@@ -392,9 +395,20 @@ func (m *Mongo) Referrals(ctx context.Context, operator string) ([]domain.Referr
 	if e != nil {
 		return nil, e
 	}
-	out := make([]domain.Referral, 0, len(docs))
+	hospitals, e := all[struct {
+		ID   string `bson:"_id"`
+		Name string `bson:"name"`
+	}](ctx, m.DB.Collection("hospitals"), bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: ids}}}}, options.Find().SetProjection(bson.D{{Key: "name", Value: 1}}))
+	if e != nil {
+		return nil, e
+	}
+	names := make(map[string]string, len(hospitals))
+	for _, h := range hospitals {
+		names[h.ID] = h.Name
+	}
+	out := make([]domain.AdminReferral, 0, len(docs))
 	for _, d := range docs {
-		out = append(out, d.domain())
+		out = append(out, domain.AdminReferral{Referral: d.domain(), HospitalName: names[d.OwnerHospitalID]})
 	}
 	return out, nil
 }

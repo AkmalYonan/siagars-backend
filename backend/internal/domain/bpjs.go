@@ -42,21 +42,14 @@ func (m BPJSMember) PublicParticipant() *BPJSParticipant {
 		MembershipType: m.MembershipType, CareClass: m.CareClass, PrimaryFacility: m.PrimaryFacility}
 }
 
-// BPJSRecord is one history entry to store. Raw is encrypted by the repository and is never exposed
-// except through the operator reveal endpoint.
+// BPJSRecord is one history entry to store. NIK is only an input for the keyed fingerprint (nik_hmac);
+// the repository never writes it, and no other unmasked input is kept (decision D-03).
 type BPJSRecord struct {
 	NIKMasked, NameMasked string
 	BirthYear             int
 	Result                string
 	Status                *string
-	Raw                   BPJSRaw
-}
-
-// BPJSRaw is the unmasked user input of a check.
-type BPJSRaw struct {
-	NIK       string `json:"nik"`
-	Name      string `json:"name"`
-	BirthDate string `json:"birth_date"`
+	NIK                   string
 }
 
 // BPJSHistoryItem is the masked list view of a stored check.
@@ -69,15 +62,6 @@ type BPJSHistoryItem struct {
 	Status      *string   `json:"status"`
 	CheckedAt   time.Time `json:"checked_at"`
 	RepeatCount int       `json:"repeat_count"`
-}
-
-// BPJSReveal is the unmasked content of one stored check.
-type BPJSReveal struct {
-	ID        string    `json:"id"`
-	NIK       string    `json:"nik"`
-	Name      string    `json:"name"`
-	BirthDate string    `json:"birth_date"`
-	CheckedAt time.Time `json:"checked_at"`
 }
 
 // MaskNIK keeps the first four and last four digits; anything that is not 16 bytes is fully masked.

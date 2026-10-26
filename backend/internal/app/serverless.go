@@ -22,7 +22,11 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h, e := sharedHandler()
 	if e != nil {
 		slog.Error("serverless init failed", "error", e.Error())
-		http.Error(w, `{"error":"service_unavailable"}`, http.StatusServiceUnavailable)
+		// Same Error schema as every other response, so clients parse one shape.
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"error":{"code":"service_unavailable","message":"Layanan sedang tidak tersedia; coba lagi sebentar"},"request_id":""}` + "\n"))
 		return
 	}
 	h.ServeHTTP(w, r)
@@ -45,6 +49,6 @@ func sharedHandler() (http.Handler, error) {
 	if e = enableBPJSHistory(repo, cfg); e != nil {
 		return nil, e
 	}
-	handler = api.New(repo, cfg, repo.Ready)
+	handler = api.New(store{repo}, cfg, repo.Ready)
 	return handler, nil
 }

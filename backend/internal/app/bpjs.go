@@ -5,15 +5,15 @@ import (
 	"siagars/backend/internal/repository"
 )
 
-// enableBPJSHistory turns on encrypted storage of BPJS check input when a server key is configured.
+// enableBPJSHistory turns on the keyed NIK fingerprint of BPJS history when a server key is configured.
 func enableBPJSHistory(repo *repository.Mongo, cfg config.Config) error {
 	if cfg.BPJSHistoryKey == nil {
 		return nil
 	}
-	c, e := repository.NewHistoryCipher(cfg.BPJSHistoryKey)
+	c, e := repository.NewHistoryHasher(cfg.BPJSHistoryKey)
 	if e != nil {
 		return e
 	}
-	repo.SetHistoryCipher(c)
+	repo.SetHistoryHasher(c)
 	return nil
 }

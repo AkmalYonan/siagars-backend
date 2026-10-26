@@ -25,8 +25,8 @@ func (f fake) Session(context.Context, string) (domain.Operator, string, error) 
 }
 func (f fake) Services(context.Context) ([]domain.Service, error)   { return []domain.Service{}, nil }
 func (f fake) Hospitals(context.Context) ([]domain.Hospital, error) { return []domain.Hospital{}, nil }
-func (f fake) Referrals(context.Context, string) ([]domain.Referral, error) {
-	return []domain.Referral{}, nil
+func (f fake) Referrals(context.Context, string) ([]domain.AdminReferral, error) {
+	return []domain.AdminReferral{}, nil
 }
 func (f fake) Lookup(context.Context, string) (domain.Referral, []domain.History, error) {
 	return domain.Referral{Status: "searching"}, []domain.History{}, nil
@@ -137,7 +137,7 @@ func TestDocs(t *testing.T) {
 		Servers []map[string]string       `json:"servers"`
 		Paths   map[string]map[string]any `json:"paths"`
 	}
-	if spec.Code != 200 || json.Unmarshal(spec.Body.Bytes(), &doc) != nil || doc.OpenAPI != "3.0.3" || len(doc.Servers) != 1 || doc.Servers[0]["url"] != "/api/v1" || len(doc.Paths) != 22 {
+	if spec.Code != 200 || json.Unmarshal(spec.Body.Bytes(), &doc) != nil || doc.OpenAPI != "3.0.3" || len(doc.Servers) != 1 || doc.Servers[0]["url"] != "/api/v1" || len(doc.Paths) != 21 { // 22 in 0.3.0; the BPJS reveal path was removed in 0.3.1 (D-03)
 		t.Fatal(spec.Code, doc.OpenAPI, doc.Servers, len(doc.Paths))
 	}
 	if w := get("/docs/"); w.Code != 301 || w.Header().Get("Location") != "/docs" {

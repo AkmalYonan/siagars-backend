@@ -2,46 +2,33 @@ package repository
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 )
 
-func TestHistoryCipher(t *testing.T) {
+func TestHistoryHasher(t *testing.T) {
 	key := bytes.Repeat([]byte{7}, 32)
-	c, e := NewHistoryCipher(key)
+	c, e := NewHistoryHasher(key)
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = NewHistoryCipher(key[:31]); e == nil {
+	if _, e = NewHistoryHasher(key[:31]); e == nil {
 		t.Fatal("kunci pendek diterima")
 	}
-	plain := []byte(`{"nik":"9999010101900001"}`)
-	a, _ := c.Seal(plain, []byte("id-1"))
-	b, _ := c.Seal(plain, []byte("id-1"))
-	if bytes.Equal(a, b) {
-		t.Fatal("nonce berulang")
-	}
-	if bytes.Contains(a, []byte("9999010101900001")) {
-		t.Fatal("ciphertext memuat plaintext")
-	}
-	if got, e := c.Open(a, []byte("id-1")); e != nil || !bytes.Equal(got, plain) {
-		t.Fatalf("round trip: %q %v", got, e)
-	}
-	if _, e = c.Open(a, []byte("id-2")); e == nil {
-		t.Fatal("aad berbeda diterima")
-	}
-	tampered := append([]byte(nil), a...)
-	tampered[len(tampered)-1] ^= 1
-	if _, e = c.Open(tampered, []byte("id-1")); e == nil {
-		t.Fatal("blob diubah diterima")
-	}
-	if _, e = c.Open(a[:5], []byte("id-1")); e == nil {
-		t.Fatal("blob pendek diterima")
-	}
-	other, _ := NewHistoryCipher(bytes.Repeat([]byte{8}, 32))
-	if _, e = other.Open(a, []byte("id-1")); e == nil {
-		t.Fatal("kunci lain diterima")
-	}
+	other, _ := NewHistoryHasher(bytes.Repeat([]byte{8}, 32))
 	if c.Fingerprint("x") != c.Fingerprint("x") || c.Fingerprint("x") == c.Fingerprint("y") || c.Fingerprint("x") == other.Fingerprint("x") {
 		t.Fatal("fingerprint tidak stabil/berbeda")
+	}
+	if fp := c.Fingerprint("9999010101900001"); len(fp) != 64 || bytes.Contains([]byte(fp), []byte("9999010101900001")) {
+		t.Fatal("fingerprint bukan hex HMAC-SHA256 atau memuat input:", fp)
+	}
+	// The derivation must stay compatible with fingerprints stored by v0.3.0: subkey = SHA256(label+key).
+	sub := sha256.Sum256(append([]byte("siagars-bpjs-history-v1:mac:"), key...))
+	m := hmac.New(sha256.New, sub[:])
+	m.Write([]byte("9999010101900001"))
+	if want := hex.EncodeToString(m.Sum(nil)); c.Fingerprint("9999010101900001") != want {
+		t.Fatal("derivasi kunci HMAC berubah; repeat_count riwayat lama akan terputus")
 	}
 }

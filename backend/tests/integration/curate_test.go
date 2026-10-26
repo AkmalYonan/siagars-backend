@@ -19,7 +19,7 @@ func TestCurateApply(t *testing.T) {
 	}
 	at := time.Now().UTC().Truncate(time.Millisecond)
 	ext, ns, name := "PLACEHOLDER-RS-0001", seed.DefaultCurationNamespace, "RS Contoh Fiktif Satu"
-	msi := repository.HospitalDoc{ID: "40000000-0000-4000-8000-000000000001", ExternalID: &ext, SourceNamespace: &ns, Name: name, CityCode: "31.71", ProvinceCode: "31",
+	msi := repository.HospitalDoc{ID: "40000000-0000-4000-8000-000000000001", ExternalID: &ext, SourceNamespace: &ns, Name: name, CityCode: "3171", ProvinceCode: "31",
 		ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "satusehat_sandbox", SyncedAt: &at}, Services: []repository.ServiceDoc{}, Beds: []repository.BedDoc{}}
 	// An operator already updated ICU; curation must not overwrite it.
 	opAt := at.Add(-time.Hour)
