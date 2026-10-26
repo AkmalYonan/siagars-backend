@@ -80,9 +80,11 @@ type Hospital struct {
 	FacilitySubtype     *Coded     `json:"facility_subtype"`
 	Operational         *bool      `json:"operational"`
 	Provenance
-	Summary  FacilitySummary `json:"facility_summary"`
-	Services []Service       `json:"services"`
-	Beds     []Bed           `json:"beds"`
+	Summary FacilitySummary `json:"facility_summary"`
+	// DataQuality is derived at render time (see ComputeDataQuality); it is never stored.
+	DataQuality DataQuality `json:"data_quality"`
+	Services    []Service   `json:"services"`
+	Beds        []Bed       `json:"beds"`
 }
 
 // Region is one province or city from the regions master; codes are used exactly as stored.
@@ -188,6 +190,7 @@ func (h *Hospital) Refresh(now time.Time) {
 		h.Beds[i].Freshness = Freshness(h.Beds[i].SourceUpdatedAt, now)
 	}
 	h.Summary = h.summary()
+	h.DataQuality = ComputeDataQuality(*h, now)
 }
 
 func (h *Hospital) summary() FacilitySummary {

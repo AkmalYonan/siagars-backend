@@ -78,7 +78,7 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 		method, path string
 		handler      http.HandlerFunc
 	}{
-		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
+		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/hospitals/markers", s.markers}, {"GET", "/recommendations", s.recommendations}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
 		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
 		{"POST", "/internal/jobs/refresh-simulation", s.refreshSimulation}, {"GET", "/internal/jobs/refresh-simulation", s.refreshSimulation},
 		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
@@ -87,7 +87,7 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 	for _, route := range routes {
 		path := "/api/v1" + route.path
 		mux.HandleFunc(route.method+" "+path, route.handler)
-		if route.path == "/hospitals/compare" || route.path == "/hospitals/suggest" {
+		if route.path == "/hospitals/compare" || route.path == "/hospitals/suggest" || route.path == "/hospitals/markers" {
 			// An all-methods fallback here would conflict with GET /hospitals/{id}; other methods on this
 			// path already reach the {id} fallback, which answers 405 with Allow: GET.
 			continue
