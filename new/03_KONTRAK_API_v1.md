@@ -6,7 +6,7 @@
 | Owner | Akmal Bariq Yonanda (BE) — **Accountable** |
 | Reviewer | M. Tauriq Arya (FE), Radja Admiral (PM, approve perubahan scope) |
 | Basis | OpenAPI `backend/docs/openapi.yaml` v0.3.0 |
-| Status | §1–§2 berlaku; §3–§7 **draft untuk dibekukan di tiket X-01 (28 Okt)** |
+| Status | §1–§3 berlaku (API 0.3.1); §4, §5, §7 **draf terimplementasi di branch BE `feat/v0.4.0-decision-core` (OpenAPI 0.4.0 + fixtures), menunggu review FE & approve PM di X-01 (28 Okt)**; §6 draf |
 
 ## 1. Prinsip kontrak
 
@@ -132,6 +132,15 @@ Permintaan: `services=nicu`, lat/lng ada, `radius_km=20`, `bpjs=required`. RS A:
 ```
 `reason` ditulis BE dalam Bahasa Indonesia, FE menampilkannya apa adanya. `algorithm_version` naik setiap rumus berubah.
 
+### 4.6 Detail implementasi (draf X-01, perlu dikonfirmasi FE/PM)
+- `hospital` pada rekomendasi = kartu ringkas: `id, name, address, city_name, province_name, phone, lat, lng, bpjs, data_origin, facility_summary, data_quality`.
+- Bila lat/lng diberikan, RS **tanpa koordinat** dikeluarkan (`excluded.location_unknown`) karena tidak bisa dipastikan berada dalam radius. Alasan lain di `meta.excluded`: `service_unavailable`, `bpjs_false`, `out_of_radius`, `not_operational`. Alasan dengan 0 RS tidak muncul.
+- Layanan yang diminta tetapi tidak ada di data RS diperlakukan `unknown` (0,2), bukan `unavailable`.
+- Penalti simulasi berlaku pada komponen bila **salah satu** nilai yang dipakainya (status layanan diketahui / jumlah bed diketahui) berorigin `simulation`.
+- `unknowns` berisi kunci `service_<slug>`, `bed_<kategori>`, `bpjs`. `flags`: `contains_simulated_data`, `stale_or_unknown_freshness`.
+- `meta` juga memuat `dataset`, `radius_km` (null tanpa lat/lng) dan `candidates_truncated` (true bila > 500 kandidat; penilaian hanya atas 500 pertama).
+- `services` maks 6 slug. Kandidat diambil dengan bounding box kasar di DB lalu Haversine di Go.
+
 ## 5. Kualitas data (`data_quality`)
 
 Ditambahkan ke DTO Hospital di list, detail, compare, rekomendasi, markers (ringkas).
@@ -139,9 +148,9 @@ Ditambahkan ke DTO Hospital di list, detail, compare, rekomendasi, markers (ring
 ```json
 "data_quality": { "score": 72, "label": "cukup", "completeness": 0.8, "freshness": "aging", "primary_origin": "curated" }
 ```
-- `completeness` = proporsi field kunci yang tidak null dari: `phone`, `lat/lng`, `bpjs`, status 6 layanan, 4 kategori bed (12 item).
+- `completeness` = proporsi field kunci yang diketahui dari: `phone`, `lat/lng`, `bpjs`, status 6 layanan, 4 kategori bed — **13 item** (1+1+1+6+4; draf awal menulis 12). Layanan diketahui bila status ≠ `unknown`; bed diketahui bila `available` ≠ null (0 = diketahui). Dibulatkan 2 desimal.
 - `freshness_factor`: fresh 1,0 · aging 0,7 · stale 0,3 · unknown 0,2 (memakai kesegaran **terburuk** dari layanan/bed yang ada).
-- `origin_factor`: curated 1,0 · satusehat_* 0,8 · simulation 0,5 (origin mayoritas layanan/bed; bila kosong, origin RS).
+- `origin_factor`: curated 1,0 · satusehat_* 0,8 · simulation 0,5 (origin mayoritas layanan/bed; bila kosong, origin RS; seri → origin berkepercayaan lebih rendah).
 - `score = round(100 × (0,5·completeness + 0,25·freshness_factor + 0,25·origin_factor))`.
 - `label`: `baik` ≥ 75 · `cukup` 50–74 · `terbatas` < 50.
 
@@ -164,7 +173,7 @@ Catatan wajib di UI: gap berarti **"tidak ada RS dengan layanan tersebut yang te
 ```json
 { "data": [{ "id": "…", "name": "…", "lat": -6.2, "lng": 106.8, "match": "all|partial|none", "data_quality_label": "cukup", "has_simulated_data": true }], "meta": { "truncated": false } }
 ```
-bbox tidak valid / luas > 2° × 2° → 422.
+bbox tidak valid / luas > 2° × 2° → 422. `bpjs=true|false` menyaring seperti `/hospitals` (null tidak cocok); `services` tidak menyaring, hanya menentukan `match` (`all` bila kosong). `meta` juga memuat `count`, `dataset`, `as_of`.
 
 ## 8. Kepatuhan FE
 

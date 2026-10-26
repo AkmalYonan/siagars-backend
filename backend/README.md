@@ -1,4 +1,4 @@
-# SiagaRS Backend (API 0.3.1)
+# SiagaRS Backend (API 0.4.0, draf X-01)
 
 Backend Go untuk SiagaRS — sistem pendukung keputusan pemilihan rumah sakit (sub-tema Data-Driven Decision Support): direktori RS, provenance, tracking rujukan sintetis, cek BPJS simulasi, dan operator. Versi API = `info.version` di [kontrak OpenAPI](docs/openapi.yaml); riwayat di [CHANGELOG](docs/CHANGELOG.md).
 
@@ -236,6 +236,13 @@ go run ./cmd/manage curate data/curation/example.placeholder.json   # dry-run; c
 ~~~
 
 Argumen `curate <file> [--apply]` didukung oleh `go run .` dan `go run ./cmd/manage`. `CURATE_FILE` serta `CURATE_APPLY=true` tetap tersedia untuk otomasi berbasis environment. `go test ./seed` menguji validator dan dry-run. `tests/integration/curate_test.go` memerlukan `TEST_MONGODB_URI` dan menguji apply, idempotensi, serta non-overwrite pada database sementara.
+
+## Pendukung keputusan (0.4.0): rekomendasi, kualitas data, markers
+
+- `GET /api/v1/recommendations?services=nicu&lat=-6.23&lng=106.99&radius_km=20&bpjs=required` — skor 0–100 per RS dengan 5 komponen yang dijelaskan, `unknowns`, `flags`, dan `meta.excluded`. Lokasi wajib (`lat`+`lng` atau `province_code`/`city_code`). Rumus dan contoh: `../new/03_KONTRAK_API_v1.md` §4; implementasi murni di `internal/domain/recommend.go`.
+- `data_quality` pada setiap Hospital — skor kualitas **data** (kelengkapan 13 item, kesegaran terburuk, origin mayoritas), `internal/domain/quality.go`.
+- `GET /api/v1/hospitals/markers?bbox=minLng,minLat,maxLng,maxLat` — marker ringan untuk peta (maks 500, bbox ≤ 2°×2°).
+- Jalankan `go run ./cmd/manage migrate` (migration 008 menambah index lokasi) sebelum memakai endpoint ini di database baru. Skor bukan saran medis; jarak garis lurus.
 
 ## Perbandingan RS (compare)
 

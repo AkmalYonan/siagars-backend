@@ -2,6 +2,28 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## 0.4.0 (draf X-01, 26 Okt 2026) - Decision Core (BE-10, BE-11, BE-12)
+
+Draf kontrak untuk dibekukan di X-01 (review FE, approve PM). Contoh respons lengkap ada di [`fixtures.json`](fixtures.json) (`recommendations`, `markers`, `hospital_detail.data.data_quality`) sehingga FE bisa membangun `/pilih-rs` sebelum endpoint live.
+
+### Baru
+| Endpoint / field | Fungsi |
+|---|---|
+| `GET /recommendations` | Rekomendasi ber-skor 0–100 + `level` + 5 komponen yang dijelaskan (`reason` Bahasa Indonesia) + `unknowns` + `flags`. Filter keras dihitung di `meta.excluded`. `meta.algorithm_version = "1"`. Rumus: `new/03_KONTRAK_API_v1.md` §4. |
+| `GET /hospitals/markers?bbox=` | Marker ringan (maks 500, `meta.truncated`) dengan `match` (all/partial/none), `data_quality_label`, `has_simulated_data`. bbox > 2° × 2° → 422. |
+| `data_quality` (Hospital) | `{score, label, completeness, freshness, primary_origin}` di daftar, detail, compare, tujuan lookup, dan admin. Skor kualitas **data**, bukan kualitas RS. |
+
+### Catatan untuk FE
+- Jangan menghitung ulang skor atau `data_quality`; tampilkan apa adanya (kontrak §8).
+- `distance_km` = garis lurus; tampilkan "± X km garis lurus", bukan waktu tempuh.
+- RS dengan `flags` `contains_simulated_data` wajib diberi label "Simulasi".
+- `/recommendations` butuh `services` dan lokasi (`lat`+`lng` atau `province_code`/`city_code`); tanpa itu 422.
+- Kartu RS rekomendasi memakai `hospital.lat`/`hospital.lng` (bukan `latitude`/`longitude` seperti DTO Hospital penuh).
+
+### Backend
+- Migration `008_geo_insights_indexes`: index `{data_origin, latitude, longitude}` (kandidat & markers) dan `{data_origin, city_code, services.slug, services.status}` (insights v0.5).
+- Skor & kualitas data = fungsi murni di `internal/domain` (`recommend.go`, `quality.go`) dengan test tabel (≥ 15 kasus rekomendasi).
+
 ## 0.3.1 (26 Okt 2026) - Stabilisasi (BE-01, BE-03, BE-05, BE-06, BE-08)
 
 ### Perubahan perilaku

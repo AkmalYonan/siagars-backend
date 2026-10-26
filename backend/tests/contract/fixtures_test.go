@@ -9,13 +9,14 @@ import (
 	"siagars/backend/internal/domain"
 )
 
-// stripFreshness removes the only time-dependent fields (freshness is recomputed against the server clock).
+// stripFreshness removes the only time-dependent fields: freshness and data_quality (which depends on
+// freshness) are recomputed against the server clock.
 func stripFreshness(v any) any {
 	switch x := v.(type) {
 	case map[string]any:
 		out := map[string]any{}
 		for k, c := range x {
-			if k != "freshness" {
+			if k != "freshness" && k != "data_quality" {
 				out[k] = stripFreshness(c)
 			}
 		}
@@ -50,6 +51,7 @@ func TestFixturesMatchOpenAPI(t *testing.T) {
 		"hospital_detail": {"GET", "/hospitals/{id}", 200}, "hospital_list": {"GET", "/hospitals", 200},
 		"tracking": {"POST", "/referrals/lookup", 200}, "bpjs_found": {"POST", "/bpjs/check", 200}, "bpjs_not_found": {"POST", "/bpjs/check", 200}, "conflict": {"PATCH", "/admin/referrals/{id}/status", 409}, "admin_referrals": {"GET", "/admin/referrals", 200},
 		"login_without_csrf": {"POST", "/auth/login", 200}, "validation_error": {"GET", "/hospitals", 422},
+		"recommendations": {"GET", "/recommendations", 200}, "markers": {"GET", "/hospitals/markers", 200},
 	} {
 		schema, ok := s.responseSchema(target.method, target.path, target.status)
 		if !ok || fx[name] == nil {
@@ -74,6 +76,13 @@ func TestFixturesMatchOpenAPI(t *testing.T) {
 		}
 	}
 	check("hospital", detail)
+	// data_quality in the fixture must be what ComputeDataQuality yields at the fixture's as_of.
+	b, _ := json.Marshal(domain.ComputeDataQuality(hospitalFromFixture(t, detail), asOf))
+	var want any
+	_ = decodeJSON(b, &want)
+	if !reflect.DeepEqual(detail["data_quality"], want) {
+		t.Errorf("fixture data_quality %v, rumus menghasilkan %v", detail["data_quality"], want)
+	}
 	for _, x := range detail["services"].([]any) {
 		check("service", obj(x))
 	}

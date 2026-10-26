@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "SiagaRS Backend",
-    "version": "0.3.1",
-    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Versi 0.3.1 (26 Okt 2026): stabilisasi\n- **Dihapus (keputusan D-03):** `POST /admin/bpjs-checks/{id}/reveal` (kini 404). Riwayat cek BPJS hanya menyimpan nilai tersamar + sidik HMAC NIK; NIK/nama asli tidak disimpan dalam bentuk apa pun.\n- **Kode wilayah** memakai format Kemendagri tanpa titik (`31`, `3171`); kode bertitik lama (`31.71`) kini 422.\n- **Kontrak:** `bpjs_data_origin` & `facility_summary.data_origin` = `DataOrigin | null`; `csrf_token` pada login **opsional** (pakai `GET /auth/csrf` bila tidak ada); skema `Error` seragam dengan `details` opsional.\n- **Admin:** `GET /admin/referrals` menyertakan `hospital_name` (nama RS pemilik).\n- Total 21 operasi publik/operator. Rincian: `docs/CHANGELOG.md`.\n\n## Versi 0.3.0 (25 Okt 2026): cek BPJS simulasi + riwayat operator\n- **Baru:** `POST /bpjs/check` (publik, SIMULASI dengan peserta sintetis, bukan BPJS Kesehatan), `GET /admin/bpjs-checks` (riwayat tersamar). Endpoint reveal yang sempat ada di 0.3.0 dihapus di 0.3.1.\n- Riwayat cek BPJS disimpan tersamar, dihapus otomatis setelah 30 hari. Tampilkan pemberitahuan ini kepada pengguna.\n- Perubahan aditif; field dan endpoint lama tidak berubah.\n\n## Versi 0.2.1 (25 Okt 2026): data contoh fasilitas untuk RS nyata\n- RS nyata (SATUSEHAT) di staging kini punya **data contoh** ICU/NICU/PICU/IGD/ambulans/rawat inap, bed, dan BPJS agar UI bisa dibangun. Semuanya **simulasi, bukan fakta RS**: item berlabel `data_origin: \"simulation\"`, tanpa `source_url`, tidak pernah `verified_at`. `data_origin` RS tetap `satusehat_sandbox`.\n- Field baru: `bpjs_data_origin` (pada Hospital) dan `facility_summary.data_origin`. Keduanya aditif. FE **wajib** memberi label \"Simulasi\" bila nilainya `simulation`.\n- Data kurasi bersumber nanti menggantikan data contoh tanpa mengubah bentuk respons.\n\n## Versi 0.2.0 (25 Okt 2026): apa yang berubah\n- **Baru:** `GET /regions`, `GET /hospitals/suggest`, `GET /admin/hospitals`, `GET /admin/hospitals/{id}` (total 19 operasi).\n- **Hospital** punya field baru: `external_id`, `source_namespace`, `facility_class`, `facility_subtype`, `operational`, `bpjs_source_url`, `bpjs_source_updated_at`, `facility_summary`. Semua aditif; field lama tidak berubah.\n- **Compare/detail** menerima UUID **atau** kode SATUSEHAT (`external_id`).\n- **Layanan baru** `rawat-inap` (bed rawat inap = kategori `general`).\n- **Data RS nyata** (SATUSEHAT) belum punya ICU/NICU/PICU/bed/BPJS: nilainya `unknown`/`null`, bukan 0/false.\n- Rincian lengkap dan catatan migrasi FE: `docs/CHANGELOG.md`.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
+    "version": "0.4.0",
+    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Versi 0.4.0 (draf X-01, 26 Okt 2026): Decision Core\n- **Baru:** `GET /recommendations` — rekomendasi RS ber-skor 0–100 yang dapat dijelaskan (5 komponen, renormalisasi bobot, penalti simulasi 0,8, `meta.excluded`, `algorithm_version`). Lihat `new/03_KONTRAK_API_v1.md` §4.\n- **Baru:** `GET /hospitals/markers?bbox=` — marker ringan (maks 500) untuk peta seluruh viewport.\n- **Baru (aditif):** `data_quality` pada setiap Hospital (daftar, detail, compare, tujuan lookup, admin) — skor kualitas **data**, bukan kualitas klinis RS.\n- Skor rekomendasi bukan saran medis; jarak = garis lurus (Haversine), bukan waktu tempuh. Darurat: 112.\n- Total 23 operasi.\n\n## Versi 0.3.1 (26 Okt 2026): stabilisasi\n- **Dihapus (keputusan D-03):** `POST /admin/bpjs-checks/{id}/reveal` (kini 404). Riwayat cek BPJS hanya menyimpan nilai tersamar + sidik HMAC NIK; NIK/nama asli tidak disimpan dalam bentuk apa pun.\n- **Kode wilayah** memakai format Kemendagri tanpa titik (`31`, `3171`); kode bertitik lama (`31.71`) kini 422.\n- **Kontrak:** `bpjs_data_origin` & `facility_summary.data_origin` = `DataOrigin | null`; `csrf_token` pada login **opsional** (pakai `GET /auth/csrf` bila tidak ada); skema `Error` seragam dengan `details` opsional.\n- **Admin:** `GET /admin/referrals` menyertakan `hospital_name` (nama RS pemilik).\n- Total 21 operasi publik/operator. Rincian: `docs/CHANGELOG.md`.\n\n## Versi 0.3.0 (25 Okt 2026): cek BPJS simulasi + riwayat operator\n- **Baru:** `POST /bpjs/check` (publik, SIMULASI dengan peserta sintetis, bukan BPJS Kesehatan), `GET /admin/bpjs-checks` (riwayat tersamar). Endpoint reveal yang sempat ada di 0.3.0 dihapus di 0.3.1.\n- Riwayat cek BPJS disimpan tersamar, dihapus otomatis setelah 30 hari. Tampilkan pemberitahuan ini kepada pengguna.\n- Perubahan aditif; field dan endpoint lama tidak berubah.\n\n## Versi 0.2.1 (25 Okt 2026): data contoh fasilitas untuk RS nyata\n- RS nyata (SATUSEHAT) di staging kini punya **data contoh** ICU/NICU/PICU/IGD/ambulans/rawat inap, bed, dan BPJS agar UI bisa dibangun. Semuanya **simulasi, bukan fakta RS**: item berlabel `data_origin: \"simulation\"`, tanpa `source_url`, tidak pernah `verified_at`. `data_origin` RS tetap `satusehat_sandbox`.\n- Field baru: `bpjs_data_origin` (pada Hospital) dan `facility_summary.data_origin`. Keduanya aditif. FE **wajib** memberi label \"Simulasi\" bila nilainya `simulation`.\n- Data kurasi bersumber nanti menggantikan data contoh tanpa mengubah bentuk respons.\n\n## Versi 0.2.0 (25 Okt 2026): apa yang berubah\n- **Baru:** `GET /regions`, `GET /hospitals/suggest`, `GET /admin/hospitals`, `GET /admin/hospitals/{id}` (total 19 operasi).\n- **Hospital** punya field baru: `external_id`, `source_namespace`, `facility_class`, `facility_subtype`, `operational`, `bpjs_source_url`, `bpjs_source_updated_at`, `facility_summary`. Semua aditif; field lama tidak berubah.\n- **Compare/detail** menerima UUID **atau** kode SATUSEHAT (`external_id`).\n- **Layanan baru** `rawat-inap` (bed rawat inap = kategori `general`).\n- **Data RS nyata** (SATUSEHAT) belum punya ICU/NICU/PICU/bed/BPJS: nilainya `unknown`/`null`, bukan 0/false.\n- Rincian lengkap dan catatan migrasi FE: `docs/CHANGELOG.md`.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
   },
   "servers": [
     {
@@ -4915,6 +4915,492 @@
           }
         }
       }
+    },
+    "/recommendations": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Rekomendasi RS ber-skor yang dapat dijelaskan",
+        "description": "Mengurutkan RS untuk kebutuhan layanan (kontrak §4). Filter keras: layanan yang diminta `unavailable`, `bpjs=false` saat `bpjs=required`, di luar radius atau tanpa koordinat (bila lat/lng diberikan), `operational=false`. Komponen: service_match 0,40 · bed_availability 0,20 · distance 0,20 · bpjs 0,10 · data_confidence 0,10; komponen yang tidak berlaku dihapus dan bobotnya dinormalisasi. Nilai simulasi pada service_match/bed_availability × 0,8. null tidak pernah = 0. Urutan: score desc, distance_km asc, nama. Maks 500 kandidat dinilai (`meta.candidates_truncated`). Bukan saran medis; darurat: 112.",
+        "operationId": "get_recommendations",
+        "parameters": [
+          {
+            "name": "services",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "nicu"
+            },
+            "description": "Slug layanan dipisah koma (1–6, dari /services)."
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "description": "Berpasangan dengan lng."
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "description": "Berpasangan dengan lat."
+          },
+          {
+            "name": "radius_km",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                5,
+                10,
+                20,
+                50
+              ],
+              "default": 20
+            },
+            "description": "Hanya bersama lat/lng."
+          },
+          {
+            "name": "province_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "32"
+            },
+            "description": "Alternatif lokasi tanpa lat/lng; kode dari /regions."
+          },
+          {
+            "name": "city_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "3275"
+            },
+            "description": "Alternatif lokasi tanpa lat/lng; kode dari /regions."
+          },
+          {
+            "name": "bpjs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "required",
+                "any"
+              ],
+              "default": "any"
+            }
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Recommendation"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total_considered": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "excluded": {
+                          "type": "object",
+                          "description": "Jumlah RS yang dikeluarkan filter keras per alasan; alasan tanpa RS tidak muncul.",
+                          "properties": {
+                            "service_unavailable": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "bpjs_false": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "out_of_radius": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "location_unknown": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "not_operational": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "weights": {
+                          "type": "object",
+                          "properties": {
+                            "service_match": {
+                              "type": "number"
+                            },
+                            "bed_availability": {
+                              "type": "number"
+                            },
+                            "distance": {
+                              "type": "number"
+                            },
+                            "bpjs": {
+                              "type": "number"
+                            },
+                            "data_confidence": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "service_match",
+                            "bed_availability",
+                            "distance",
+                            "bpjs",
+                            "data_confidence"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "generated_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "algorithm_version": {
+                          "type": "string"
+                        },
+                        "dataset": {
+                          "type": "string",
+                          "enum": [
+                            "real",
+                            "simulation",
+                            "all"
+                          ]
+                        },
+                        "candidates_truncated": {
+                          "type": "boolean"
+                        },
+                        "radius_km": {
+                          "type": "number",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "total_considered",
+                        "excluded",
+                        "weights",
+                        "generated_at",
+                        "algorithm_version",
+                        "dataset",
+                        "candidates_truncated",
+                        "radius_km"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "services hilang/tidak dikenal, lokasi hilang, lat/lng tidak berpasangan, radius_km tanpa lat/lng, kode wilayah tidak dikenal, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "lokasi wajib: lat+lng atau province_code/city_code"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hospitals/markers": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Marker peta ringan dalam bbox",
+        "description": "Semua RS berkoordinat di dalam bbox (maks 500, `meta.truncated` bila lebih). bbox tidak valid atau lebih luas dari 2° × 2°: 422. `bpjs` menyaring seperti GET /hospitals (null tidak pernah cocok); `services` tidak menyaring tetapi menentukan `match`.",
+        "operationId": "get_hospitals_markers",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "106.6,-6.4,107.1,-6.1"
+            },
+            "description": "minLng,minLat,maxLng,maxLat"
+          },
+          {
+            "name": "services",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Slug dipisah koma; menentukan match."
+          },
+          {
+            "name": "bpjs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Marker"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 500
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "dataset": {
+                          "type": "string",
+                          "enum": [
+                            "real",
+                            "simulation",
+                            "all"
+                          ]
+                        },
+                        "as_of": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "truncated",
+                        "dataset",
+                        "as_of"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "bbox hilang/tidak valid/terlalu luas, services tidak dikenal, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "bbox maksimal 2° × 2°; perbesar zoom peta"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5353,6 +5839,9 @@
           },
           "facility_summary": {
             "$ref": "#/components/schemas/FacilitySummary"
+          },
+          "data_quality": {
+            "$ref": "#/components/schemas/DataQuality"
           }
         },
         "required": [
@@ -5384,7 +5873,8 @@
           "facility_subtype",
           "operational",
           "facility_summary",
-          "bpjs_data_origin"
+          "bpjs_data_origin",
+          "data_quality"
         ],
         "additionalProperties": false,
         "description": "Satu RS. id adalah UUID lokal; external_id adalah kode dari sumber (SATUSEHAT: kode_satusehat) dan boleh dipakai di GET /hospitals/{id} dan /hospitals/compare. facility_summary merangkum ICU/NICU/PICU/rawat inap/BPJS."
@@ -6211,6 +6701,293 @@
         ],
         "additionalProperties": false,
         "description": "Rujukan pada daftar operator: field Referral ditambah nama RS pemilik (BE-08), sehingga FE tidak perlu request per baris."
+      },
+      "DataQuality": {
+        "type": "object",
+        "description": "Skor kualitas DATA (kelengkapan 13 item kunci, kesegaran terburuk, origin mayoritas) — bukan kualitas layanan RS. Dihitung saat render, tidak disimpan. score = round(100 × (0,5·completeness + 0,25·freshness_factor + 0,25·origin_factor)); freshness_factor fresh 1 · aging 0,7 · stale 0,3 · unknown 0,2; origin_factor curated 1 · satusehat_* 0,8 · simulation 0,5.",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "baik",
+              "cukup",
+              "terbatas"
+            ],
+            "description": "baik ≥ 75 · cukup 50–74 · terbatas < 50."
+          },
+          "completeness": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Proporsi diketahui dari 13 item: phone, lat/lng, bpjs, status 6 layanan (icu, nicu, picu, igd-24h, ambulance, rawat-inap; unknown = tidak diketahui), 4 kategori bed (icu, nicu, picu, general; available null = tidak diketahui, 0 = diketahui). Dibulatkan 2 desimal."
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "aging",
+              "stale",
+              "unknown"
+            ],
+            "description": "Kesegaran terburuk dari layanan/bed yang ada; unknown bila tidak ada."
+          },
+          "primary_origin": {
+            "type": "string",
+            "enum": [
+              "curated",
+              "simulation",
+              "satusehat_sandbox",
+              "satusehat_production"
+            ],
+            "description": "Origin mayoritas layanan/bed; bila kosong, origin RS. Seri condong ke origin berkepercayaan lebih rendah."
+          }
+        },
+        "required": [
+          "score",
+          "label",
+          "completeness",
+          "freshness",
+          "primary_origin"
+        ],
+        "additionalProperties": false
+      },
+      "ScoreComponent": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "service_match",
+              "bed_availability",
+              "distance",
+              "bpjs",
+              "data_confidence"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Bobot setelah renormalisasi."
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "contribution": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "round(100 × weight × value × penalti)."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Penjelasan Bahasa Indonesia; FE menampilkannya apa adanya."
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "value",
+          "contribution",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "RecommendedHospital": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "province_name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "nullable": true
+          },
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "nullable": true
+          },
+          "bpjs": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "data_origin": {
+            "type": "string",
+            "enum": [
+              "curated",
+              "simulation",
+              "satusehat_sandbox",
+              "satusehat_production"
+            ]
+          },
+          "facility_summary": {
+            "$ref": "#/components/schemas/FacilitySummary"
+          },
+          "data_quality": {
+            "$ref": "#/components/schemas/DataQuality"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "city_name",
+          "province_name",
+          "phone",
+          "lat",
+          "lng",
+          "bpjs",
+          "data_origin",
+          "facility_summary",
+          "data_quality"
+        ],
+        "additionalProperties": false
+      },
+      "Recommendation": {
+        "type": "object",
+        "properties": {
+          "hospital": {
+            "$ref": "#/components/schemas/RecommendedHospital"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "high ≥ 75 · medium 50–74 · low < 50."
+          },
+          "distance_km": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true,
+            "description": "Garis lurus; null tanpa lat/lng permintaan."
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreComponent"
+            }
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Nilai yang belum diketahui dan dinilai default, mis. service_icu, bed_nicu, bpjs."
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "contains_simulated_data",
+                "stale_or_unknown_freshness"
+              ]
+            }
+          }
+        },
+        "required": [
+          "hospital",
+          "score",
+          "level",
+          "distance_km",
+          "components",
+          "unknowns",
+          "flags"
+        ],
+        "additionalProperties": false
+      },
+      "Marker": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "match": {
+            "type": "string",
+            "enum": [
+              "all",
+              "partial",
+              "none"
+            ],
+            "description": "Terhadap services yang diminta (available/limited = cocok); all bila services kosong."
+          },
+          "data_quality_label": {
+            "type": "string",
+            "enum": [
+              "baik",
+              "cukup",
+              "terbatas"
+            ]
+          },
+          "has_simulated_data": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "lat",
+          "lng",
+          "match",
+          "data_quality_label",
+          "has_simulated_data"
+        ],
+        "additionalProperties": false
       }
     }
   },
