@@ -1,5 +1,7 @@
 # AGENTS.md - SiagaRS Backend
 
+> **Acuan kerja terbaru (26 Okt 2026): SiagaRS v1.** Baca dulu folder [`../new/`](../new/README.md): [`new/AGENTS.md`](../new/AGENTS.md) (aturan kerja BE v1), [`new/PRD.md`](../new/PRD.md) (PRD BE v1), [`new/02_ROADMAP_PHASE_VERSI.md`](../new/02_ROADMAP_PHASE_VERSI.md) (tiket `BE-xx`), [`new/03_KONTRAK_API_v1.md`](../new/03_KONTRAK_API_v1.md). Bila bertentangan dengan isi di bawah, **`new/` yang berlaku** — termasuk keputusan D-03: cek BPJS tidak lagi menyimpan NIK mentah (hapus `raw_enc` dan endpoint reveal). Isi di bawah adalah aturan V0.1 yang tetap berlaku selama tidak bertentangan.
+
 Instruksi untuk coding agent di repository backend Go. Versi kerja V0.1 diperbarui 24 Oktober 2026. Baca PRD.md, status workspace, go.mod, README.md, dan docs/DECISIONS.md sebelum mengubah kode.
 
 ## Mandat dan kepemilikan
