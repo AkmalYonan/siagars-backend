@@ -34,7 +34,7 @@ type Store interface {
 	CreateSession(context.Context, string, string, string, time.Time, string) error
 	Session(context.Context, string) (domain.Operator, string, error)
 	Revoke(context.Context, string) error
-	Referrals(context.Context, string) ([]domain.Referral, error)
+	Referrals(context.Context, string) ([]domain.AdminReferral, error)
 	Lookup(context.Context, string) (domain.Referral, []domain.History, error)
 	UpdateReferral(context.Context, string, string, string, string, int, string) (domain.Referral, error)
 	UpdateFacility(context.Context, string, string, string, int, *string, *int, *int, string) error
@@ -79,9 +79,11 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 		handler      http.HandlerFunc
 	}{
 		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
-		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/admin/bpjs-checks/{id}/reveal", s.bpjsReveal}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
+		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
+		{"POST", "/internal/jobs/refresh-simulation", s.refreshSimulation}, {"GET", "/internal/jobs/refresh-simulation", s.refreshSimulation},
 		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
 	}
+	allowed, paths := map[string][]string{}, []string{}
 	for _, route := range routes {
 		path := "/api/v1" + route.path
 		mux.HandleFunc(route.method+" "+path, route.handler)
@@ -90,9 +92,15 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 			// path already reach the {id} fallback, which answers 405 with Allow: GET.
 			continue
 		}
-		method := route.method
+		if allowed[path] == nil {
+			paths = append(paths, path)
+		}
+		allowed[path] = append(allowed[path], route.method)
+	}
+	for _, path := range paths {
+		methods := strings.Join(allowed[path], ", ")
 		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Allow", method)
+			w.Header().Set("Allow", methods)
 			fail(w, r, 405, "method_not_allowed", "Metode tidak didukung")
 		})
 	}

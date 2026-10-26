@@ -1,0 +1,11 @@
+{"commands": [
+ {"update": "hospitals", "updates": [
+  {"q": {"city_code": {"$regex": "\\."}}, "u": [{"$set": {"city_code": {"$replaceAll": {"input": "$city_code", "find": ".", "replacement": ""}}}}], "multi": true},
+  {"q": {"province_code": {"$regex": "\\."}}, "u": [{"$set": {"province_code": {"$replaceAll": {"input": "$province_code", "find": ".", "replacement": ""}}}}], "multi": true}]},
+ {"aggregate": "regions", "pipeline": [
+  {"$match": {"_id": {"$regex": "\\."}}},
+  {"$set": {"_id": {"$replaceAll": {"input": "$_id", "find": ".", "replacement": ""}}, "parent_code": {"$cond": [{"$eq": [{"$type": "$parent_code"}, "string"]}, {"$replaceAll": {"input": "$parent_code", "find": ".", "replacement": ""}}, "$parent_code"]}}},
+  {"$merge": {"into": "regions", "on": "_id", "whenMatched": "keepExisting", "whenNotMatched": "insert"}}], "cursor": {}},
+ {"delete": "regions", "deletes": [{"q": {"_id": {"$regex": "\\."}}, "limit": 0}]},
+ {"update": "regions", "updates": [{"q": {"parent_code": {"$regex": "\\."}}, "u": [{"$set": {"parent_code": {"$replaceAll": {"input": "$parent_code", "find": ".", "replacement": ""}}}}], "multi": true}]}
+]}

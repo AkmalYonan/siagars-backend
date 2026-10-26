@@ -69,8 +69,8 @@ func (s *secStore) Revoke(_ context.Context, token string) error {
 	return nil
 }
 func (s *secStore) Services(context.Context) ([]domain.Service, error) { return nil, nil }
-func (s *secStore) Referrals(context.Context, string) ([]domain.Referral, error) {
-	return []domain.Referral{}, nil
+func (s *secStore) Referrals(context.Context, string) ([]domain.AdminReferral, error) {
+	return []domain.AdminReferral{}, nil
 }
 
 const (

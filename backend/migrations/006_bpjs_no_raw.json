@@ -1,0 +1,7 @@
+{"commands": [
+ {"update": "bpjs_check_history", "updates": [{"q": {"raw_enc": {"$exists": true}}, "u": {"$unset": {"raw_enc": ""}}, "multi": true}]},
+ {"collMod": "bpjs_check_history", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "nik_masked", "name_masked", "birth_year", "result", "created_at"], "additionalProperties": false, "properties": {
+  "_id": {"bsonType": "string"}, "nik_masked": {"bsonType": "string"}, "name_masked": {"bsonType": "string"}, "birth_year": {"bsonType": "int"},
+  "result": {"enum": ["found", "not_found"]}, "status": {"enum": ["active", "inactive", null]}, "nik_hmac": {"bsonType": "string"},
+  "created_at": {"bsonType": "date"}}}}, "validationLevel": "strict", "validationAction": "error"}
+]}

@@ -109,6 +109,10 @@ func TestForbidden403(t *testing.T) {
 	if len(dataList(t, a)) != 1 || obj(dataList(t, a)[0])["id"] != refA || len(dataList(t, b)) != 1 || obj(dataList(t, b)[0])["id"] != refB {
 		t.Errorf("scope admin/referrals: %v %v", a, b)
 	}
+	// BE-08: each row carries the owner hospital's name, so the client needs no per-row lookup.
+	if name, _ := obj(dataList(t, a)[0])["hospital_name"].(string); name == "" {
+		t.Errorf("hospital_name kosong: %v", a)
+	}
 }
 
 func TestNotFound404(t *testing.T) {

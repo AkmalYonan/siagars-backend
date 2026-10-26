@@ -22,7 +22,7 @@
 ```json
 { "error": { "code": "validation_error", "message": "Pesan dalam Bahasa Indonesia", "details": [{ "field": "services", "issue": "unknown_value" }] }, "request_id": "..." }
 ```
-`code` ∈ `request_error, validation_error, unauthorized, forbidden, not_found, conflict, rate_limited, service_unavailable, not_implemented, internal_error`. `details` opsional. 429 selalu menyertakan header `Retry-After`.
+`code` ∈ `request_error, validation_error, invalid_json, body_too_large, unauthorized, invalid_credentials, forbidden, invalid_origin, invalid_csrf, not_found, method_not_allowed, conflict, rate_limited, not_ready, service_unavailable, not_implemented, internal_error` (enum `Error.code` di OpenAPI 0.3.1; kode spesifik dipertahankan agar pemetaan FE tidak rusak). `details` opsional. 429 selalu menyertakan header `Retry-After`.
 
 ## 2. Daftar endpoint v1.0
 

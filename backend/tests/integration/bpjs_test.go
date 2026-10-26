@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -63,22 +64,22 @@ func TestBPJSHistoryStorage(t *testing.T) {
 		t.Fatalf("index TTL 30 hari tidak ada: %v", idx)
 	}
 
-	key := bytes.Repeat([]byte{9}, 32)
-	cipher, e := repository.NewHistoryCipher(key)
+	hasher, e := repository.NewHistoryHasher(bytes.Repeat([]byte{9}, 32))
 	if e != nil {
 		t.Fatal(e)
 	}
-	p.SetHistoryCipher(cipher)
-	rec := func(nik, name, birth, result string) domain.BPJSRecord {
-		return domain.BPJSRecord{NIKMasked: domain.MaskNIK(nik), NameMasked: domain.MaskName(name), BirthYear: 1990, Result: result, Raw: domain.BPJSRaw{NIK: nik, Name: name, BirthDate: birth}}
+	p.SetHistoryHasher(hasher)
+	rec := func(nik, name, result string) domain.BPJSRecord {
+		return domain.BPJSRecord{NIKMasked: domain.MaskNIK(nik), NameMasked: domain.MaskName(name), BirthYear: 1990, Result: result, NIK: nik}
 	}
-	for _, r := range []domain.BPJSRecord{rec("9999010101900001", "Budi Santoso", "1990-01-01", "found"), rec("9999010101900001", "Budi Santoso", "1990-01-01", "found"), rec("9999777788889999", "Orang Lain", "1980-05-05", "not_found")} {
+	for _, r := range []domain.BPJSRecord{rec("9999010101900001", "Budi Santoso", "found"), rec("9999010101900001", "Budi Santoso", "found"), rec("9999777788889999", "Orang Lain", "not_found")} {
 		if e = p.RecordBPJSCheck(ctx, r); e != nil {
 			t.Fatal(e)
 		}
 	}
-	// Nothing readable is stored: scan every raw document of the collection.
-	raws, e := p.DB.Collection("bpjs_check_history").Find(ctx, bson.D{})
+	// Nothing readable is stored, and no raw_enc field exists at all (D-03): scan every raw document.
+	c := p.DB.Collection("bpjs_check_history")
+	raws, e := c.Find(ctx, bson.D{})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -87,7 +88,10 @@ func TestBPJSHistoryStorage(t *testing.T) {
 		t.Fatal(e, len(docs))
 	}
 	for _, d := range docs {
-		for _, secret := range []string{"9999010101900001", "9999777788889999", "Budi Santoso", "Orang Lain", "1990-01-01", "1980-05-05"} {
+		if _, e := d.LookupErr("raw_enc"); e == nil {
+			t.Fatal("dokumen baru memuat raw_enc")
+		}
+		for _, secret := range []string{"9999010101900001", "9999777788889999", "Budi Santoso", "Orang Lain", "1990-01-01"} {
 			if bytes.Contains(d, []byte(secret)) {
 				t.Fatalf("dokumen riwayat memuat %q terbaca", secret)
 			}
@@ -110,49 +114,50 @@ func TestBPJSHistoryStorage(t *testing.T) {
 	if page2, n, _ := p.BPJSHistory(ctx, 2, 2, ""); n != 3 || len(page2) != 1 {
 		t.Fatalf("paginasi: %d %d", n, len(page2))
 	}
-	got, e := p.RevealBPJS(ctx, items[0].ID)
-	if e != nil || got.ID != items[0].ID || got.NIK == "" || got.Name == "" || got.BirthDate == "" {
-		t.Fatalf("reveal: %+v %v", got, e)
+	// The validator from migration 006 rejects any field outside the masked schema, raw_enc included.
+	if _, e = c.InsertOne(ctx, bson.D{{Key: "_id", Value: "legacy"}, {Key: "nik_masked", Value: "x"}, {Key: "name_masked", Value: "x"}, {Key: "birth_year", Value: int32(1990)}, {Key: "result", Value: "found"}, {Key: "created_at", Value: time.Now()}, {Key: "raw_enc", Value: []byte{1, 2, 3}}}); e == nil {
+		t.Fatal("validator menerima raw_enc")
 	}
-	if _, e = p.RevealBPJS(ctx, "00000000-0000-4000-8000-000000000000"); e != repository.ErrNotFound {
-		t.Fatalf("reveal id tak ada: %v", e)
-	}
-	// A blob moved to another entry fails: it is bound to its id.
-	var a, b struct {
-		ID  string `bson:"_id"`
-		Raw []byte `bson:"raw_enc"`
-	}
-	c := p.DB.Collection("bpjs_check_history")
-	_ = c.FindOne(ctx, bson.D{{Key: "_id", Value: items[0].ID}}).Decode(&a)
-	_ = c.FindOne(ctx, bson.D{{Key: "_id", Value: items[1].ID}}).Decode(&b)
-	if _, e = c.UpdateOne(ctx, bson.D{{Key: "_id", Value: b.ID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "raw_enc", Value: a.Raw}}}}); e != nil {
-		t.Fatal(e)
-	}
-	if _, e = p.RevealBPJS(ctx, b.ID); e != repository.ErrRawUnavailable {
-		t.Fatalf("blob dipindah terbuka: %v", e)
-	}
-	// Without the server key nothing can be revealed, and new entries keep only masked data.
-	p.SetHistoryCipher(nil)
-	if _, e = p.RevealBPJS(ctx, items[0].ID); e != repository.ErrRawUnavailable {
-		t.Fatalf("tanpa kunci: %v", e)
-	}
-	if e = p.RecordBPJSCheck(ctx, rec("9999111122223333", "Tanpa Kunci", "1970-01-01", "not_found")); e != nil {
+	// Without the key a new entry has no fingerprint either.
+	p.SetHistoryHasher(nil)
+	if e = p.RecordBPJSCheck(ctx, rec("9999111122223333", "Tanpa Kunci", "not_found")); e != nil {
 		t.Fatal(e)
 	}
 	var plain struct {
-		Raw  []byte `bson:"raw_enc"`
 		HMAC string `bson:"nik_hmac"`
 	}
 	_ = c.FindOne(ctx, bson.D{{Key: "nik_masked", Value: "9999********3333"}}).Decode(&plain)
-	if len(plain.Raw) != 0 || plain.HMAC != "" {
-		t.Fatal("tanpa kunci tetap menyimpan data mentah")
+	if plain.HMAC != "" {
+		t.Fatal("tanpa kunci tetap menyimpan nik_hmac")
 	}
-	if e = p.AuditBPJS(ctx, "operator", "bpjs.reveal", items[0].ID, "rid"); e != nil {
+}
+
+// TestMigration006RemovesRawEnc replays 006 over a v0.3.0-style entry that still holds raw_enc.
+func TestMigration006RemovesRawEnc(t *testing.T) {
+	p := database(t)
+	ctx := context.Background()
+	c := p.DB.Collection("bpjs_check_history")
+	legacy := bson.D{{Key: "_id", Value: "legacy-1"}, {Key: "nik_masked", Value: "9999********0001"}, {Key: "name_masked", Value: "BU** SA*****"}, {Key: "birth_year", Value: int32(1990)}, {Key: "result", Value: "found"}, {Key: "nik_hmac", Value: "ab"}, {Key: "raw_enc", Value: []byte{1, 2, 3}}, {Key: "created_at", Value: time.Now()}}
+	if _, e := c.InsertOne(ctx, legacy, options.InsertOne().SetBypassDocumentValidation(true)); e != nil {
 		t.Fatal(e)
 	}
-	var audit bson.M
-	if e = p.DB.Collection("audit_logs").FindOne(ctx, bson.D{{Key: "action", Value: "bpjs.reveal"}}).Decode(&audit); e != nil || audit["entity_id"] != items[0].ID {
-		t.Fatal(e, audit)
+	if _, e := p.DB.Collection("schema_migrations").DeleteOne(ctx, bson.D{{Key: "_id", Value: "006_bpjs_no_raw.json"}}); e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 2; i++ { // replay, then confirm it stays idempotent
+		if e := p.Migrate(ctx); e != nil {
+			t.Fatal(e)
+		}
+	}
+	var got bson.Raw
+	if e := c.FindOne(ctx, bson.D{{Key: "_id", Value: "legacy-1"}}).Decode(&got); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := got.LookupErr("raw_enc"); e == nil {
+		t.Fatal("raw_enc masih ada setelah migrasi 006")
+	}
+	if v, _ := got.LookupErr("nik_hmac"); v.StringValue() != "ab" {
+		t.Fatal("migrasi 006 menghapus field tersamar")
 	}
 }
 
@@ -164,8 +169,8 @@ func TestBPJSEndToEndWithMongo(t *testing.T) {
 	if e := seed.Apply(ctx, p); e != nil {
 		t.Fatal(e)
 	}
-	cipher, _ := repository.NewHistoryCipher(bytes.Repeat([]byte{3}, 32))
-	p.SetHistoryCipher(cipher)
+	hasher, _ := repository.NewHistoryHasher(bytes.Repeat([]byte{3}, 32))
+	p.SetHistoryHasher(hasher)
 	h := httpapi.New(p, config.Config{PublicOrigin: "http://localhost:3000", SessionTTL: time.Hour}, func(context.Context) error { return nil })
 	post := func(path, body string, hdr map[string]string, cookie string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("POST", "/api/v1"+path, strings.NewReader(body))
@@ -224,18 +229,11 @@ func TestBPJSEndToEndWithMongo(t *testing.T) {
 	if list.Code != 200 || len(items.Data) != len(seed.BPJSDemoMembers)+1 || strings.Contains(list.Body.String(), "Santoso") || strings.Contains(list.Body.String(), "9999010101900001") {
 		t.Fatal(list.Code, list.Body.String())
 	}
+	// The reveal route is gone (D-03), even for a signed-in operator with a valid CSRF token.
 	hdr := map[string]string{"Origin": "http://localhost:3000", "X-CSRF-Token": l.Data.CSRF}
-	id := items.Data[len(items.Data)-1].ID // oldest = first demo participant
-	if w := post("/admin/bpjs-checks/"+id+"/reveal", `{"password":"salah-salah-salah"}`, hdr, cookie); w.Code != 401 {
-		t.Fatal(w.Code)
-	}
-	w := post("/admin/bpjs-checks/"+id+"/reveal", `{"password":"correct-horse-battery"}`, hdr, cookie)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), `"nik":"9999010101900001"`) || !strings.Contains(w.Body.String(), `"name":"BUDI SANTOSO"`) {
+	id := items.Data[len(items.Data)-1].ID
+	if w := post("/admin/bpjs-checks/"+id+"/reveal", `{"password":"correct-horse-battery"}`, hdr, cookie); w.Code != 404 || strings.Contains(w.Body.String(), "9999010101900001") {
 		t.Fatal(w.Code, w.Body.String())
-	}
-	n, _ := p.DB.Collection("audit_logs").CountDocuments(ctx, bson.D{{Key: "action", Value: bson.D{{Key: "$in", Value: bson.A{"bpjs.reveal", "bpjs.reveal_denied"}}}}})
-	if n != 2 {
-		t.Fatalf("audit: %d", n)
 	}
 	// audit rows never hold personal data
 	var all []bson.Raw

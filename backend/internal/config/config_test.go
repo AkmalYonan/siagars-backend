@@ -8,7 +8,7 @@ import (
 )
 
 func TestConfigurationGuardrails(t *testing.T) {
-	for _, test := range []struct{ name, key, value string }{{"demo", "DEMO_MODE", "false"}, {"integration", "SATUSEHAT_ENABLED", "true"}, {"origin", "PUBLIC_ORIGIN", "http://localhost:3000/path"}, {"ttl", "SESSION_TTL_HOURS", "0"}, {"port", "PORT", "-1"}, {"environment", "APP_ENV", "unknown"}, {"production_http", "APP_ENV", "production"}, {"mongo_scheme", "MONGODB_URI", "postgres://localhost/demo"}, {"mongo_missing", "MONGODB_URI", ""}, {"database", "MONGODB_DATABASE", "bad/name"}} {
+	for _, test := range []struct{ name, key, value string }{{"demo", "DEMO_MODE", "false"}, {"integration", "SATUSEHAT_ENABLED", "true"}, {"origin", "PUBLIC_ORIGIN", "http://localhost:3000/path"}, {"ttl", "SESSION_TTL_HOURS", "0"}, {"port", "PORT", "-1"}, {"environment", "APP_ENV", "unknown"}, {"production_http", "APP_ENV", "production"}, {"mongo_scheme", "MONGODB_URI", "postgres://localhost/demo"}, {"mongo_missing", "MONGODB_URI", ""}, {"database", "MONGODB_DATABASE", "bad/name"}, {"job_secret_short", "JOB_SECRET", "too-short"}} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Setenv("MONGODB_URI", "mongodb://localhost:27017")
 			t.Setenv("MONGODB_DATABASE", "siagars")
@@ -116,5 +116,17 @@ func TestLoadEnvFile(t *testing.T) {
 		if _, e = LoadEnvFile(path); e == nil || strings.Contains(e.Error(), "open") && strings.Contains(bad, "open") && strings.Contains(e.Error(), "\"open") {
 			t.Fatal("malformed line accepted or value leaked", bad, e)
 		}
+	}
+}
+
+func TestJobSecret(t *testing.T) {
+	baseline(t)
+	t.Setenv("JOB_SECRET", "")
+	if c, e := Load(); e != nil || c.JobSecret != "" {
+		t.Fatal("tanpa JOB_SECRET job harus nonaktif", c.JobSecret, e)
+	}
+	t.Setenv("JOB_SECRET", "  "+strings.Repeat("s", 32)+" ")
+	if c, e := Load(); e != nil || c.JobSecret != strings.Repeat("s", 32) {
+		t.Fatal(c.JobSecret, e)
 	}
 }

@@ -4,7 +4,7 @@
       "id": "10000000-0000-4000-8000-000000000001",
       "name": "RS Simulasi Siaga 01",
       "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-      "city_code": "31.71",
+      "city_code": "3171",
       "city_name": "Jakarta Selatan",
       "province_code": "31",
       "province_name": "DKI Jakarta",
@@ -80,7 +80,7 @@
         "id": "10000000-0000-4000-8000-000000000001",
         "name": "RS Simulasi Siaga 01",
         "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-        "city_code": "31.71",
+        "city_code": "3171",
         "city_name": "Jakarta Selatan",
         "province_code": "31",
         "province_name": "DKI Jakarta",
@@ -165,7 +165,7 @@
         "id": "10000000-0000-4000-8000-000000000001",
         "name": "RS Simulasi Siaga 01",
         "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-        "city_code": "31.71",
+        "city_code": "3171",
         "city_name": "Jakarta Selatan",
         "province_code": "31",
         "province_name": "DKI Jakarta",
@@ -305,7 +305,7 @@
         "id": "10000000-0000-4000-8000-000000000001",
         "name": "RS Simulasi Siaga 01",
         "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-        "city_code": "31.71",
+        "city_code": "3171",
         "city_name": "Jakarta Selatan",
         "province_code": "31",
         "province_name": "DKI Jakarta",
@@ -413,5 +413,39 @@
       "data_origin": "simulation",
       "checked_at": "2026-10-25T08:00:00Z"
     }
+  },
+  "admin_referrals": {
+    "data": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "owner_hospital_id": "10000000-0000-4000-8000-000000000001",
+        "destination_hospital_id": "10000000-0000-4000-8000-000000000002",
+        "status": "searching",
+        "public_note": "Pencarian tujuan dalam skenario simulasi",
+        "next_step": "Menunggu konfirmasi simulasi",
+        "version": 1,
+        "is_demo": true,
+        "updated_at": "2026-10-23T08:00:00Z",
+        "hospital_name": "RS Simulasi Siaga 01"
+      }
+    ]
+  },
+  "login_without_csrf": {
+    "data": {
+      "expires_at": "2026-10-26T16:00:00Z"
+    }
+  },
+  "validation_error": {
+    "error": {
+      "code": "validation_error",
+      "message": "Kode wilayah tidak dikenal",
+      "details": [
+        {
+          "field": "city_code",
+          "issue": "unknown_value"
+        }
+      ]
+    },
+    "request_id": "request-id-example"
   }
 }

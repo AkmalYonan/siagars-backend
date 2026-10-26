@@ -48,7 +48,8 @@ func TestFixturesMatchOpenAPI(t *testing.T) {
 		status       int
 	}{
 		"hospital_detail": {"GET", "/hospitals/{id}", 200}, "hospital_list": {"GET", "/hospitals", 200},
-		"tracking": {"POST", "/referrals/lookup", 200}, "bpjs_found": {"POST", "/bpjs/check", 200}, "bpjs_not_found": {"POST", "/bpjs/check", 200}, "conflict": {"PATCH", "/admin/referrals/{id}/status", 409},
+		"tracking": {"POST", "/referrals/lookup", 200}, "bpjs_found": {"POST", "/bpjs/check", 200}, "bpjs_not_found": {"POST", "/bpjs/check", 200}, "conflict": {"PATCH", "/admin/referrals/{id}/status", 409}, "admin_referrals": {"GET", "/admin/referrals", 200},
+		"login_without_csrf": {"POST", "/auth/login", 200}, "validation_error": {"GET", "/hospitals", 422},
 	} {
 		schema, ok := s.responseSchema(target.method, target.path, target.status)
 		if !ok || fx[name] == nil {

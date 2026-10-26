@@ -26,7 +26,7 @@ func bed(category string, total, available *int, origin string, source *time.Tim
 	return domain.Bed{Category: category, Total: total, Available: available, Provenance: prov(origin, source), Version: 1}
 }
 func hosp(n int, name, origin string, source *time.Time, mods ...func(*domain.Hospital)) domain.Hospital {
-	h := domain.Hospital{ID: hid(n), Name: name, CityCode: "31.71", CityName: "Jakarta Selatan", ProvinceCode: "31", ProvinceName: "DKI Jakarta",
+	h := domain.Hospital{ID: hid(n), Name: name, CityCode: "3171", CityName: "Jakarta Selatan", ProvinceCode: "31", ProvinceName: "DKI Jakarta",
 		Provenance: prov(origin, source), Services: []domain.Service{}, Beds: []domain.Bed{}}
 	for _, m := range mods {
 		m(&h)
@@ -178,7 +178,7 @@ func TestQueryValidationMatchesSpec(t *testing.T) {
 	for _, bad := range []string{
 		fmt.Sprintf("limit=%d", max+1), "limit=0", "limit=-1", "limit=abc", "limit=", "page=0", "page=abc", "page=1000001",
 		"unknown=1", "q=a&q=b", "sort=random", "sort=distance", "lat=-6.2", "lng=106.8", "lat=91&lng=0", "lat=-91&lng=0", "lat=0&lng=181", "lat=NaN&lng=0", "lat=x&lng=0",
-		"province_code=99", "city_code=99.99", "city_code=31", "province_code=31.71", "dataset=fake", "bpjs=1", "has_available_beds=yes",
+		"province_code=99", "city_code=99.99", "city_code=31", "city_code=31.71", "province_code=31.71", "dataset=fake", "bpjs=1", "has_available_beds=yes",
 		"q=" + strings.Repeat("x", 101), "q=" + strings.Repeat("é", 101),
 	} {
 		code, body := listStatus(r, bad)
@@ -186,7 +186,7 @@ func TestQueryValidationMatchesSpec(t *testing.T) {
 			t.Errorf("%q: %d %v", bad, code, body)
 		}
 	}
-	for _, good := range []string{"q=" + strings.Repeat("x", 100), "q=" + strings.Repeat("é", 100), "lat=90&lng=180", "lat=-90&lng=-180", "province_code=31", "city_code=31.71", "sort=distance&lat=-6.2&lng=106.8", "sort=match", "q=jakarta"} {
+	for _, good := range []string{"q=" + strings.Repeat("x", 100), "q=" + strings.Repeat("é", 100), "lat=90&lng=180", "lat=-90&lng=-180", "province_code=31", "city_code=3171", "sort=distance&lat=-6.2&lng=106.8", "sort=match", "q=jakarta"} {
 		if code, body := listStatus(r, good); code != 200 {
 			t.Errorf("%q: %d %v", good, code, body)
 		}
@@ -213,12 +213,12 @@ func TestTextAndRegionFilters(t *testing.T) {
 	r := newRig(t, []domain.Hospital{
 		hosp(1, "Siaga Utama", "curated", up),
 		hosp(2, "Medika Barat", "curated", up, func(h *domain.Hospital) {
-			h.CityCode, h.CityName, h.ProvinceCode, h.ProvinceName = "32.73", "Bandung", "32", "Jawa Barat"
+			h.CityCode, h.CityName, h.ProvinceCode, h.ProvinceName = "3273", "Bandung", "32", "Jawa Barat"
 		}),
 	})
 	for query, want := range map[string][]string{
 		"q=siaga": {hid(1)}, "q=SIAGA%20utama": {hid(1)}, "q=bandung": {hid(2)}, "q=jawa": {hid(2)}, "q=tidak-ada": {},
-		"province_code=32": {hid(2)}, "city_code=31.71": {hid(1)}, "province_code=31&q=siaga": {hid(1)}, "province_code=32&q=siaga": {},
+		"province_code=32": {hid(2)}, "city_code=3171": {hid(1)}, "province_code=31&q=siaga": {hid(1)}, "province_code=32&q=siaga": {},
 	} {
 		if got := ids(t, list(t, r, query)); !equalStrings(got, want) {
 			t.Errorf("%s: got %v want %v", query, got, want)

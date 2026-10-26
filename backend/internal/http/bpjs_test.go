@@ -24,9 +24,7 @@ type bpjsFake struct {
 	bm         sync.Mutex
 	members    map[string]domain.BPJSMember
 	records    []domain.BPJSRecord
-	audits     []string
 	failRecord bool
-	failAudit  bool
 }
 
 func (f *bpjsFake) BPJSMember(_ context.Context, nik string) (domain.BPJSMember, error) {
@@ -58,29 +56,6 @@ func (f *bpjsFake) BPJSHistory(_ context.Context, page, limit int, result string
 	from := min((page-1)*limit, len(all))
 	return all[from:min(from+limit, len(all))], len(all), nil
 }
-func (f *bpjsFake) RevealBPJS(_ context.Context, id string) (domain.BPJSReveal, error) {
-	f.bm.Lock()
-	defer f.bm.Unlock()
-	for i, r := range f.records {
-		if f.id(i) == id {
-			if r.Raw.NIK == "" {
-				return domain.BPJSReveal{}, repository.ErrRawUnavailable
-			}
-			return domain.BPJSReveal{ID: id, NIK: r.Raw.NIK, Name: r.Raw.Name, BirthDate: r.Raw.BirthDate, CheckedAt: time.Now().UTC()}, nil
-		}
-	}
-	return domain.BPJSReveal{}, repository.ErrNotFound
-}
-func (f *bpjsFake) AuditBPJS(_ context.Context, actor, action, id, _ string) error {
-	f.bm.Lock()
-	defer f.bm.Unlock()
-	if f.failAudit {
-		return errors.New("audit down")
-	}
-	f.audits = append(f.audits, action+":"+id)
-	return nil
-}
-
 func newBPJSRig(t *testing.T) (*secRig, *bpjsFake) {
 	r := newSecRig(t)
 	cls, name := "3", "Pekerja Bukan Penerima Upah"
@@ -119,7 +94,7 @@ func TestBPJSCheckFoundAndMasked(t *testing.T) {
 			t.Errorf("respons memuat %q", leak)
 		}
 	}
-	if len(fake.records) != 1 || fake.records[0].Result != "found" || fake.records[0].Raw.Name != "budi SANTOSO" {
+	if len(fake.records) != 1 || fake.records[0].Result != "found" || fake.records[0].NameMasked != "BU** SA*****" || fake.records[0].NIKMasked != "9999********0001" {
 		t.Fatalf("riwayat: %+v", fake.records)
 	}
 }
@@ -206,10 +181,9 @@ func TestBPJSHistoryFailureDoesNotBreakAnswerAndNothingIsLogged(t *testing.T) {
 	}
 }
 
-func revealPath(id string) string  { return "/admin/bpjs-checks/" + id + "/reveal" }
-func passwordBody(p string) string { return `{"password":"` + p + `"}` }
-
-func TestBPJSAdminHistoryAndReveal(t *testing.T) {
+// TestBPJSAdminHistoryMaskedAndNoReveal covers the masked operator history and decision D-03: the
+// former reveal route no longer exists, for any method or caller.
+func TestBPJSAdminHistoryMaskedAndNoReveal(t *testing.T) {
 	r, fake := newBPJSRig(t)
 	check(r, "9999010101900001", "Budi Santoso", "1990-01-01")
 	check(r, "9999999999999999", "Orang Lain", "1980-05-05")
@@ -229,55 +203,15 @@ func TestBPJSAdminHistoryAndReveal(t *testing.T) {
 			t.Errorf("%s: %d", q, w.Code)
 		}
 	}
-	id := fake.id(0)
-	if w := r.do(secReq{method: "POST", path: revealPath(id), body: passwordBody(secPassword)}); w.Code != 401 {
-		t.Errorf("tanpa sesi: %d", w.Code)
-	}
-	if w := r.do(secReq{method: "POST", path: revealPath(id), body: passwordBody(secPassword), cookie: cookie}); w.Code != 403 || errCode(w) != "invalid_csrf" {
-		t.Errorf("tanpa csrf: %d", w.Code)
-	}
-	if w := r.do(secReq{method: "POST", path: revealPath(id), body: passwordBody(secPassword), cookie: cookie, csrf: csrf, origin: "https://evil.example"}); w.Code != 403 || errCode(w) != "invalid_origin" {
-		t.Errorf("origin asing: %d", w.Code)
-	}
-	if len(fake.audits) != 0 {
-		t.Fatalf("audit tercatat sebelum re-auth: %v", fake.audits)
-	}
-	w = r.do(secReq{method: "POST", path: revealPath(id), body: passwordBody("salah-salah-salah"), cookie: cookie, csrf: csrf})
-	if w.Code != 401 || errCode(w) != "invalid_credentials" || strings.Contains(w.Body.String(), "9999") || len(fake.audits) != 1 || !strings.HasPrefix(fake.audits[0], "bpjs.reveal_denied:") {
-		t.Fatal(w.Code, w.Body.String(), fake.audits)
-	}
-	w = r.do(secReq{method: "POST", path: revealPath(id), body: passwordBody(secPassword), cookie: cookie, csrf: csrf})
-	if w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" || !strings.Contains(w.Body.String(), `"nik":"9999010101900001"`) || !strings.Contains(w.Body.String(), `"name":"Budi Santoso"`) || fake.audits[len(fake.audits)-1] != "bpjs.reveal:"+id {
-		t.Fatal(w.Code, w.Body.String(), fake.audits)
-	}
-	if w := r.do(secReq{method: "POST", path: revealPath(fake.id(99)), body: passwordBody(secPassword), cookie: cookie, csrf: csrf}); w.Code != 404 {
-		t.Errorf("id tidak ada: %d", w.Code)
-	}
-	if w := r.do(secReq{method: "POST", path: revealPath("NOPE"), body: passwordBody(secPassword), cookie: cookie, csrf: csrf}); w.Code != 404 {
-		t.Errorf("id jelek: %d", w.Code)
-	}
-	fake.records[1].Raw = domain.BPJSRaw{}
-	if w := r.do(secReq{method: "POST", path: revealPath(fake.id(1)), body: passwordBody(secPassword), cookie: cookie, csrf: csrf}); w.Code != 409 || errCode(w) != "history_raw_unavailable" {
-		t.Errorf("tanpa data asli: %d %s", w.Code, w.Body.String())
-	}
-	fake.failAudit = true
-	if w := r.do(secReq{method: "POST", path: revealPath(id), body: passwordBody(secPassword), cookie: cookie, csrf: csrf}); w.Code != 500 || strings.Contains(w.Body.String(), "9999") {
-		t.Errorf("audit gagal: %d %s", w.Code, w.Body.String())
-	}
-}
-
-func TestBPJSRevealRateLimit(t *testing.T) {
-	r, fake := newBPJSRig(t)
-	check(r, "9999010101900001", "Budi Santoso", "1990-01-01")
-	cookie, csrf := r.login()
-	for i := 0; i < 5; i++ {
-		if w := r.do(secReq{method: "POST", path: revealPath(fake.id(0)), body: passwordBody("salah-salah-salah"), cookie: cookie, csrf: csrf}); w.Code != 401 {
-			t.Fatalf("percobaan %d: %d", i+1, w.Code)
+	path := "/admin/bpjs-checks/" + fake.id(0) + "/reveal"
+	for _, q := range []secReq{
+		{method: "POST", path: path, body: `{"password":"` + secPassword + `"}`, cookie: cookie, csrf: csrf},
+		{method: "POST", path: path, body: `{"password":"` + secPassword + `"}`},
+		{method: "GET", path: path, cookie: cookie},
+	} {
+		if w := r.do(q); w.Code != 404 || errCode(w) != "not_found" || strings.Contains(w.Body.String(), "9999") {
+			t.Errorf("reveal %s: %d %s", q.method, w.Code, w.Body.String())
 		}
-	}
-	w := r.do(secReq{method: "POST", path: revealPath(fake.id(0)), body: passwordBody(secPassword), cookie: cookie, csrf: csrf})
-	if w.Code != 429 || strings.Contains(w.Body.String(), "9999") {
-		t.Fatal("rate limit reveal:", w.Code)
 	}
 }
 

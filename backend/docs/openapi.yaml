@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "SiagaRS Backend",
-    "version": "0.3.0",
-    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Versi 0.3.0 (25 Okt 2026): cek BPJS simulasi + riwayat operator\n- **Baru:** `POST /bpjs/check` (publik, SIMULASI dengan peserta sintetis, bukan BPJS Kesehatan), `GET /admin/bpjs-checks` (riwayat tersamar), `POST /admin/bpjs-checks/{id}/reveal` (data asli setelah re-autentikasi password operator). Total 22 operasi.\n- Input cek BPJS dicatat untuk riwayat operator: tersamar + terenkripsi, dihapus otomatis setelah 30 hari. Tampilkan pemberitahuan ini kepada pengguna.\n- Perubahan aditif; field dan endpoint lama tidak berubah.\n\n## Versi 0.2.1 (25 Okt 2026): data contoh fasilitas untuk RS nyata\n- RS nyata (SATUSEHAT) di staging kini punya **data contoh** ICU/NICU/PICU/IGD/ambulans/rawat inap, bed, dan BPJS agar UI bisa dibangun. Semuanya **simulasi, bukan fakta RS**: item berlabel `data_origin: \"simulation\"`, tanpa `source_url`, tidak pernah `verified_at`. `data_origin` RS tetap `satusehat_sandbox`.\n- Field baru: `bpjs_data_origin` (pada Hospital) dan `facility_summary.data_origin`. Keduanya aditif. FE **wajib** memberi label \"Simulasi\" bila nilainya `simulation`.\n- Data kurasi bersumber nanti menggantikan data contoh tanpa mengubah bentuk respons.\n\n## Versi 0.2.0 (25 Okt 2026): apa yang berubah\n- **Baru:** `GET /regions`, `GET /hospitals/suggest`, `GET /admin/hospitals`, `GET /admin/hospitals/{id}` (total 19 operasi).\n- **Hospital** punya field baru: `external_id`, `source_namespace`, `facility_class`, `facility_subtype`, `operational`, `bpjs_source_url`, `bpjs_source_updated_at`, `facility_summary`. Semua aditif; field lama tidak berubah.\n- **Compare/detail** menerima UUID **atau** kode SATUSEHAT (`external_id`).\n- **Layanan baru** `rawat-inap` (bed rawat inap = kategori `general`).\n- **Data RS nyata** (SATUSEHAT) belum punya ICU/NICU/PICU/bed/BPJS: nilainya `unknown`/`null`, bukan 0/false.\n- Rincian lengkap dan catatan migrasi FE: `docs/CHANGELOG.md`.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
+    "version": "0.3.1",
+    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Versi 0.3.1 (26 Okt 2026): stabilisasi\n- **Dihapus (keputusan D-03):** `POST /admin/bpjs-checks/{id}/reveal` (kini 404). Riwayat cek BPJS hanya menyimpan nilai tersamar + sidik HMAC NIK; NIK/nama asli tidak disimpan dalam bentuk apa pun.\n- **Kode wilayah** memakai format Kemendagri tanpa titik (`31`, `3171`); kode bertitik lama (`31.71`) kini 422.\n- **Kontrak:** `bpjs_data_origin` & `facility_summary.data_origin` = `DataOrigin | null`; `csrf_token` pada login **opsional** (pakai `GET /auth/csrf` bila tidak ada); skema `Error` seragam dengan `details` opsional.\n- **Admin:** `GET /admin/referrals` menyertakan `hospital_name` (nama RS pemilik).\n- Total 21 operasi publik/operator. Rincian: `docs/CHANGELOG.md`.\n\n## Versi 0.3.0 (25 Okt 2026): cek BPJS simulasi + riwayat operator\n- **Baru:** `POST /bpjs/check` (publik, SIMULASI dengan peserta sintetis, bukan BPJS Kesehatan), `GET /admin/bpjs-checks` (riwayat tersamar). Endpoint reveal yang sempat ada di 0.3.0 dihapus di 0.3.1.\n- Riwayat cek BPJS disimpan tersamar, dihapus otomatis setelah 30 hari. Tampilkan pemberitahuan ini kepada pengguna.\n- Perubahan aditif; field dan endpoint lama tidak berubah.\n\n## Versi 0.2.1 (25 Okt 2026): data contoh fasilitas untuk RS nyata\n- RS nyata (SATUSEHAT) di staging kini punya **data contoh** ICU/NICU/PICU/IGD/ambulans/rawat inap, bed, dan BPJS agar UI bisa dibangun. Semuanya **simulasi, bukan fakta RS**: item berlabel `data_origin: \"simulation\"`, tanpa `source_url`, tidak pernah `verified_at`. `data_origin` RS tetap `satusehat_sandbox`.\n- Field baru: `bpjs_data_origin` (pada Hospital) dan `facility_summary.data_origin`. Keduanya aditif. FE **wajib** memberi label \"Simulasi\" bila nilainya `simulation`.\n- Data kurasi bersumber nanti menggantikan data contoh tanpa mengubah bentuk respons.\n\n## Versi 0.2.0 (25 Okt 2026): apa yang berubah\n- **Baru:** `GET /regions`, `GET /hospitals/suggest`, `GET /admin/hospitals`, `GET /admin/hospitals/{id}` (total 19 operasi).\n- **Hospital** punya field baru: `external_id`, `source_namespace`, `facility_class`, `facility_subtype`, `operational`, `bpjs_source_url`, `bpjs_source_updated_at`, `facility_summary`. Semua aditif; field lama tidak berubah.\n- **Compare/detail** menerima UUID **atau** kode SATUSEHAT (`external_id`).\n- **Layanan baru** `rawat-inap` (bed rawat inap = kategori `general`).\n- **Data RS nyata** (SATUSEHAT) belum punya ICU/NICU/PICU/bed/BPJS: nilainya `unknown`/`null`, bukan 0/false.\n- Rincian lengkap dan catatan migrasi FE: `docs/CHANGELOG.md`.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
   },
   "servers": [
     {
@@ -2776,7 +2776,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Referral"
+                        "$ref": "#/components/schemas/AdminReferral"
                       }
                     }
                   },
@@ -4476,7 +4476,7 @@
           "BPJS (simulasi)"
         ],
         "summary": "Cek kepesertaan BPJS (simulasi, peserta sintetis)",
-        "description": "SIMULASI: tidak terhubung ke BPJS Kesehatan atau VClaim. Data dicocokkan ke peserta sintetis (daftar demo di docs/HANDOVER_BE-TO-FE_BPJS.md). Publik tanpa sesi/CSRF; rate limit 10 permintaan/menit per IP (429 + Retry-After). Respons tidak pernah memuat NIK atau nama lengkap. Input dicatat tersamar dan terenkripsi untuk riwayat operator selama 30 hari; beri tahu pengguna dan jangan minta data nyata.",
+        "description": "SIMULASI: tidak terhubung ke BPJS Kesehatan atau VClaim. Data dicocokkan ke peserta sintetis (daftar demo di docs/archive/HANDOVER_BE-TO-FE_BPJS.md). Publik tanpa sesi/CSRF; rate limit 10 permintaan/menit per IP (429 + Retry-After). Respons tidak pernah memuat NIK atau nama lengkap. Riwayat dicatat hanya dalam bentuk tersamar (tanpa NIK lengkap) selama 30 hari; beri tahu pengguna dan jangan minta data nyata.",
         "operationId": "post_bpjs_check",
         "parameters": [],
         "security": [],
@@ -4711,7 +4711,7 @@
           "Admin"
         ],
         "summary": "Riwayat cek BPJS (tersamar)",
-        "description": "Semua operator login boleh melihat (pemeriksaan tidak terkait satu RS). Hanya data tersamar; data asli lewat reveal. Entri dihapus otomatis setelah 30 hari. Terbaru dulu.",
+        "description": "Semua operator login boleh melihat (pemeriksaan tidak terkait satu RS). Hanya data tersamar; data asli tidak disimpan. Entri dihapus otomatis setelah 30 hari. Terbaru dulu.",
         "operationId": "get_admin_bpjs_checks",
         "parameters": [
           {
@@ -4915,313 +4915,6 @@
           }
         }
       }
-    },
-    "/admin/bpjs-checks/{id}/reveal": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Buka data asli satu entri riwayat",
-        "description": "Butuh sesi, Origin, X-CSRF-Token, dan password operator yang login (re-autentikasi, maks 5 percobaan/15 menit). Setiap percobaan, berhasil atau ditolak, dicatat di audit tanpa data pribadi; bila audit gagal, data tidak dibuka. 409 history_raw_unavailable bila entri tidak punya data asli (server tanpa kunci riwayat saat disimpan atau kunci berbeda).",
-        "operationId": "post_admin_bpjs_checks__id__reveal",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "UUID lowercase"
-          },
-          {
-            "name": "Origin",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "https://frontend-siagars.vercel.app"
-            },
-            "description": "Wajib untuk mutasi session; harus salah satu origin FE yang diizinkan (PUBLIC_ORIGIN)."
-          },
-          {
-            "name": "X-CSRF-Token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 64,
-              "maxLength": 64
-            }
-          }
-        ],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BPJSRevealRequest"
-              },
-              "example": {
-                "password": "<password operator>"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Berhasil",
-            "headers": {
-              "X-Request-ID": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "schema": {
-                  "type": "string",
-                  "example": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/BPJSReveal"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "additionalProperties": false
-                },
-                "example": {
-                  "data": {
-                    "id": "6f1c2f7e-5b0e-4b8a-9d51-0c1f7a3a2b10",
-                    "nik": "9999010101900001",
-                    "name": "Budi Santoso",
-                    "birth_date": "1990-01-01",
-                    "checked_at": "2026-10-25T08:00:00Z"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "JSON tidak valid atau field tidak didukung",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "invalid_json",
-                    "message": "JSON tidak valid atau field tidak didukung"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session atau password tidak valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "invalid_credentials",
-                    "message": "Session atau password tidak valid"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Origin atau CSRF ditolak",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "invalid_csrf",
-                    "message": "Origin atau CSRF ditolak"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Resource tidak ditemukan",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "not_found",
-                    "message": "Resource tidak ditemukan"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "405": {
-            "description": "Metode tidak didukung",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "method_not_allowed",
-                    "message": "Metode tidak didukung"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Data asli tidak tersedia untuk entri ini",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "history_raw_unavailable",
-                    "message": "Data asli tidak tersedia untuk entri ini"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Body maksimal 64 KB",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "body_too_large",
-                    "message": "Body maksimal 64 KB"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Input tidak valid (pesan tidak menggemakan nilai input)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "validation_error",
-                    "message": "Input tidak valid (pesan tidak menggemakan nilai input)"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Terlalu banyak percobaan; coba lagi nanti",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "rate_limited",
-                    "message": "Terlalu banyak percobaan; coba lagi nanti"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Terjadi kesalahan internal",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "internal_error",
-                    "message": "Terjadi kesalahan internal"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Fitur ini belum tersedia di server",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "not_implemented",
-                    "message": "Fitur ini belum tersedia di server"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Layanan belum siap",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "error": {
-                    "code": "service_unavailable",
-                    "message": "Layanan belum siap"
-                  },
-                  "request_id": "request-id-example"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -5241,15 +4934,50 @@
             "type": "object",
             "properties": {
               "code": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "request_error",
+                  "validation_error",
+                  "invalid_json",
+                  "body_too_large",
+                  "unauthorized",
+                  "invalid_credentials",
+                  "forbidden",
+                  "invalid_origin",
+                  "invalid_csrf",
+                  "not_found",
+                  "method_not_allowed",
+                  "conflict",
+                  "rate_limited",
+                  "not_ready",
+                  "service_unavailable",
+                  "not_implemented",
+                  "internal_error"
+                ],
+                "description": "Kode mesin yang stabil; FE memetakan pesan dari kode, bukan dari message."
               },
               "message": {
-                "type": "string"
+                "type": "string",
+                "description": "Pesan dalam Bahasa Indonesia, aman ditampilkan."
               },
-              "fields": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "string"
+              "details": {
+                "type": "array",
+                "description": "Opsional: rincian per field.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "issue": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "issue"
+                  ],
+                  "additionalProperties": false
                 }
               }
             },
@@ -5267,7 +4995,8 @@
           "error",
           "request_id"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Format galat seragam untuk semua status 4xx/5xx. `details` opsional. 429 selalu menyertakan header Retry-After."
       },
       "Service": {
         "type": "object",
@@ -5861,7 +5590,8 @@
           "csrf_token": {
             "type": "string",
             "minLength": 64,
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "Opsional sejak 0.3.1. Bila tidak ada, ambil dengan GET /auth/csrf sebelum mutasi."
           },
           "expires_at": {
             "type": "string",
@@ -5869,7 +5599,6 @@
           }
         },
         "required": [
-          "csrf_token",
           "expires_at"
         ],
         "additionalProperties": false
@@ -6215,7 +5944,7 @@
       },
       "BPJSCheckRequest": {
         "type": "object",
-        "description": "Data pribadi hanya di body, tidak pernah di URL. Input dicatat (tersamar + terenkripsi) untuk riwayat operator selama 30 hari.",
+        "description": "Data pribadi hanya di body, tidak pernah di URL. Riwayat dicatat hanya tersamar selama 30 hari; NIK lengkap tidak disimpan.",
         "properties": {
           "nik": {
             "type": "string",
@@ -6333,7 +6062,7 @@
       },
       "BPJSHistoryItem": {
         "type": "object",
-        "description": "Entri riwayat tersamar. Data asli hanya lewat reveal.",
+        "description": "Entri riwayat tersamar. NIK/nama asli tidak disimpan dalam bentuk apa pun (keputusan D-03); tidak ada endpoint untuk membukanya.",
         "properties": {
           "id": {
             "type": "string",
@@ -6415,52 +6144,73 @@
         ],
         "additionalProperties": false
       },
-      "BPJSRevealRequest": {
+      "AdminReferral": {
         "type": "object",
-        "properties": {
-          "password": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 72,
-            "description": "Password operator yang sedang login (re-autentikasi)."
-          }
-        },
-        "required": [
-          "password"
-        ],
-        "additionalProperties": false
-      },
-      "BPJSReveal": {
-        "type": "object",
-        "description": "Data asli input pengguna. Hanya untuk operator setelah re-autentikasi; setiap akses dicatat di audit.",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "nik": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "birth_date": {
+          "owner_hospital_id": {
             "type": "string",
-            "format": "date"
+            "format": "uuid"
           },
-          "checked_at": {
+          "destination_hospital_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "verified",
+              "searching",
+              "confirmed",
+              "completed",
+              "rejected"
+            ]
+          },
+          "public_note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "next_step": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "is_demo": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "hospital_name": {
+            "type": "string",
+            "description": "Nama RS pemilik rujukan (owner_hospital_id)."
           }
         },
         "required": [
           "id",
-          "nik",
-          "name",
-          "birth_date",
-          "checked_at"
+          "owner_hospital_id",
+          "destination_hospital_id",
+          "status",
+          "public_note",
+          "next_step",
+          "version",
+          "is_demo",
+          "updated_at",
+          "hospital_name"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Rujukan pada daftar operator: field Referral ditambah nama RS pemilik (BE-08), sehingga FE tidak perlu request per baris."
       }
     }
   },

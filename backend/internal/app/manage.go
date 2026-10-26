@@ -23,7 +23,7 @@ import (
 )
 
 // Commands lists the management commands accepted by Manage.
-var Commands = []string{"migrate", "seed", "operator", "sync-satusehat", "curate", "dummy-facilities"}
+var Commands = []string{"migrate", "seed", "operator", "sync-satusehat", "curate", "dummy-facilities", "refresh-simulation"}
 
 // MinOperatorPassword is 12 bytes everywhere except local development, where 8 keeps throwaway
 // test accounts practical. Unset APP_ENV is treated as development, matching config.Load.
@@ -76,6 +76,12 @@ func Manage(command string) error {
 			return fmt.Errorf("dummy-facilities failed: %w", e)
 		}
 		fmt.Printf("dummy-facilities (data_origin=simulation): %d hospitals, %d service items, %d bed items, %d BPJS values in total (new or earlier); existing data was not overwritten\n", out.Hospitals, out.ServicesAdded, out.BedsAdded, out.BPJSSet)
+	case "refresh-simulation":
+		out, e := seed.RefreshSimulation(ctx, p, "system:cli", "manage", time.Now())
+		if e != nil {
+			return fmt.Errorf("refresh-simulation failed: %w", e)
+		}
+		fmt.Printf("refresh-simulation (hanya data_origin=simulation): %d RS impor, %d RS simulasi, %d item layanan, %d item bed distempel %s\n", out.ImportedHospitals, out.SimulationHospitals, out.Services, out.Beds, out.At.Format(time.RFC3339))
 	case "operator":
 		email := strings.ToLower(strings.TrimSpace(os.Getenv("OPERATOR_EMAIL")))
 		password := os.Getenv("OPERATOR_PASSWORD")

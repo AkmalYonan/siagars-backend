@@ -130,13 +130,19 @@ func (s *store) scoped(operator, hospital string) bool {
 	}
 	return false
 }
-func (s *store) Referrals(_ context.Context, operator string) ([]domain.Referral, error) {
+func (s *store) Referrals(_ context.Context, operator string) ([]domain.AdminReferral, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := []domain.Referral{}
+	out := []domain.AdminReferral{}
 	for _, r := range s.referrals {
 		if s.scoped(operator, r.OwnerHospitalID) {
-			out = append(out, r.Referral)
+			name := ""
+			for _, h := range s.hospitals {
+				if h.ID == r.OwnerHospitalID {
+					name = h.Name
+				}
+			}
+			out = append(out, domain.AdminReferral{Referral: r.Referral, HospitalName: name})
 		}
 	}
 	return out, nil
@@ -233,7 +239,7 @@ func newRig(t *testing.T, hospitals []domain.Hospital) *rig {
 	st := &store{
 		hospitals: hospitals,
 		services:  []domain.Service{{Slug: "icu", Name: "ICU", Category: "critical_care"}, {Slug: "nicu", Name: "NICU", Category: "critical_care"}, {Slug: "igd", Name: "IGD", Category: "emergency"}},
-		regions:   map[string]string{"31": "province", "32": "province", "31.71": "city", "32.73": "city"},
+		regions:   map[string]string{"31": "province", "32": "province", "3171": "city", "3273": "city"},
 		hash:      string(hash),
 		sessions:  map[string]session{},
 	}

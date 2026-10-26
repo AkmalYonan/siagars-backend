@@ -48,7 +48,7 @@ go run . operator    # opsional: akun operator dari OPERATOR_EMAIL/OPERATOR_PASS
 go run .             # API di http://localhost:8080
 ```
 
-Cek: `GET /api/v1/health` dan `/api/v1/ready`. Dokumentasi interaktif tersedia di `/docs`. Perintah lain (`sync-satusehat`, `curate`, `dummy-facilities`) dan detail backend ada di [`backend/README.md`](backend/README.md); panduan integrasi frontend ada di [`backend/docs/API_FRONTEND.md`](backend/docs/API_FRONTEND.md).
+Cek: `GET /api/v1/health` dan `/api/v1/ready`. Dokumentasi interaktif tersedia di `/docs`. Perintah lain (`sync-satusehat`, `curate`, `dummy-facilities`) dan detail backend ada di [`backend/README.md`](backend/README.md); panduan integrasi frontend ada di [`backend/docs/archive/API_FRONTEND.md`](backend/docs/archive/API_FRONTEND.md).
 
 ## Pengujian
 
@@ -69,7 +69,7 @@ Tes integrasi MongoDB bersifat opt-in lewat `TEST_MONGODB_URI` dan memakai datab
 - [x] Tracking rujukan sintetis, auth operator, dashboard admin RS dalam scope
 - [x] Cek kepesertaan BPJS **simulasi** (peserta sintetis) dan riwayat operator dengan enkripsi + TTL 30 hari (API 0.3.0, baru di staging)
 - [x] Migrasi 001-005, seed idempotent, pipeline kurasi `curate`, dokumentasi OpenAPI
-- [x] Deployment Vercel production dan staging; uji publik (32 pemeriksaan) dan login operator dari origin FE (15 pemeriksaan) lulus di production pada 25 Okt 2026 ([`backend/docs/HANDOVER_PRODUCTION_v0.2.1.md`](backend/docs/HANDOVER_PRODUCTION_v0.2.1.md))
+- [x] Deployment Vercel production dan staging; uji publik (32 pemeriksaan) dan login operator dari origin FE (15 pemeriksaan) lulus di production pada 25 Okt 2026 ([`backend/docs/archive/HANDOVER_PRODUCTION_v0.2.1.md`](backend/docs/archive/HANDOVER_PRODUCTION_v0.2.1.md))
 - [ ] Rilis 0.3.0 (cek BPJS simulasi) ke production
 - [ ] Suite `qa/` dijalankan terhadap production/staging
 - [ ] Kurasi data RS nyata bersumber (layanan/bed/BPJS)
