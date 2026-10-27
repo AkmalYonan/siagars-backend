@@ -1,6 +1,8 @@
-# SiagaRS Backend v0.1
+# SiagaRS Backend (API 0.4.0, draf X-01)
 
-Backend Go untuk direktori rumah sakit pilot, provenance, tracking rujukan sintetis, dan operator. Acuan: [PRD.md](PRD.md), [AGENTS.md](AGENTS.md), [keputusan implementasi](docs/DECISIONS.md), dan [kontrak OpenAPI](docs/openapi.yaml).
+Backend Go untuk SiagaRS — sistem pendukung keputusan pemilihan rumah sakit (sub-tema Data-Driven Decision Support): direktori RS, provenance, tracking rujukan sintetis, cek BPJS simulasi, dan operator. Versi API = `info.version` di [kontrak OpenAPI](docs/openapi.yaml); riwayat di [CHANGELOG](docs/CHANGELOG.md).
+
+Acuan kerja (sumber kebenaran): folder [`../new/`](../new/README.md) — [PRD v1](../new/PRD.md), [AGENTS v1](../new/AGENTS.md), [roadmap & tiket](../new/02_ROADMAP_PHASE_VERSI.md), [kontrak API v1](../new/03_KONTRAK_API_v1.md). [Keputusan implementasi](docs/DECISIONS.md). Dokumen v0.1 lama ada di [`docs/archive/`](docs/archive/).
 
 ## Stack dan struktur
 
@@ -27,7 +29,7 @@ Isi `.env` di root project (salin dari `.env.example`; file ini git-ignored), la
 
 ~~~powershell
 go run .                  # muat .env lalu jalankan API di http://localhost:8080
-go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat | curate | dummy-facilities
+go run . migrate          # tersedia: migrate | seed | operator | sync-satusehat | curate | dummy-facilities | refresh-simulation
 ~~~
 
 `go run .` membaca `.env` tanpa menimpa variabel yang sudah di-set di terminal, jadi override sementara tetap bisa, misalnya `$env:SATUSEHAT_ENABLED='true'; $env:SATUSEHAT_KABKOTA='jabodetabek'; go run . sync-satusehat`. Log hanya mencatat jumlah variabel yang dimuat, bukan nilainya. `cmd/api` dan `cmd/manage` tetap tersedia dan sengaja tidak memuat `.env` (untuk container/produksi).
@@ -155,7 +157,7 @@ Status: adapter teruji dengan mock `httptest.Server`; importer teruji integratio
 
 ## Kontrak dan alur frontend
 
-Panduan implementasi untuk tim frontend tersedia di [docs/API_FRONTEND.md](docs/API_FRONTEND.md). Prefix /api/v1. Lihat docs/openapi.yaml untuk seluruh endpoint, enum, request dan response. Semua response memiliki X-Request-ID dan Cache-Control: no-store. JSON snake_case, timestamp UTC, UUID lowercase. Data list saat ini memberi Hospital lengkap (termasuk services/beds); frontend dapat memakai subset summary. Map memakai halaman aktif yang sama.
+Panduan implementasi untuk tim frontend tersedia di [docs/archive/API_FRONTEND.md](docs/archive/API_FRONTEND.md) (arsip v0.1; acuan aktif: `docs/openapi.yaml` + `../new/03_KONTRAK_API_v1.md`). Prefix /api/v1. Lihat docs/openapi.yaml untuk seluruh endpoint, enum, request dan response. Semua response memiliki X-Request-ID dan Cache-Control: no-store. JSON snake_case, timestamp UTC, UUID lowercase. Data list saat ini memberi Hospital lengkap (termasuk services/beds); frontend dapat memakai subset summary. Map memakai halaman aktif yang sama.
 
 1. GET /services, lalu /hospitals?services=nicu,icu&bpjs=true. Daftar memakai `dataset=real` secara default (semua data selain simulasi); `dataset=simulation` hanya 30 RS fiktif demo, `dataset=all` keduanya. Filter layanan/BPJS pada dataset real hanya cocok untuk RS yang datanya memuat nilai tersebut; RS MSI belum punya layanan/bed/BPJS, jadi hasilnya kosong sampai ada sumber kurasi. Filter layanan AND mencakup available/limited, termasuk simulasi berlabel. Unknown berbeda dari false, null bed berbeda dari 0.
 2. GET /hospitals/{id} untuk detail. source_updated_at menentukan freshness; synced_at dan verified_at tidak menggantikannya.
@@ -211,7 +213,7 @@ go test -v ./tests/integration
 
 Tes: seluruh pasangan transisi, freshness boundary, Haversine, null/0, filter AND/BPJS/bed, pagination, input invalid, Origin/CSRF/session, limiter, body limit dan DTO publik. Suite DB memeriksa migration/seed idempotent, rollback audit failure, dua concurrent update dengan versi sama, scope, expiry/revoke, bed constraint dan DTO joins.
 
-Status aktual 24 Okt 2026: gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus. Migration 001-003, seed idempotent, query pushdown, compare RS, trusted proxy, serta benchmark pencarian sudah tersedia. Race detector tidak berjalan karena CGO nonaktif dan tidak ada GCC. E2E frontend, Docker, dan kurasi RS nyata belum terbukti. Pembaruan 25 Okt 2026: migration 004 (layanan `rawat-inap`, index `external_id`), 19 operasi (tambah `/regions`, `/hospitals/suggest`, `/admin/hospitals`, `/admin/hospitals/{id}`), compare/detail menerima kode SATUSEHAT, dan `facility_summary` pada DTO RS; detail di `docs/DECISIONS.md` dan `docs/API_FRONTEND.md`. Data ICU/NICU/PICU/bed/BPJS RS nyata tetap unknown sampai dikurasi.
+Status aktual 24 Okt 2026: gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus. Migration 001-003, seed idempotent, query pushdown, compare RS, trusted proxy, serta benchmark pencarian sudah tersedia. Race detector tidak berjalan karena CGO nonaktif dan tidak ada GCC. E2E frontend, Docker, dan kurasi RS nyata belum terbukti. Pembaruan 25 Okt 2026: migration 004 (layanan `rawat-inap`, index `external_id`), 19 operasi (tambah `/regions`, `/hospitals/suggest`, `/admin/hospitals`, `/admin/hospitals/{id}`), compare/detail menerima kode SATUSEHAT, dan `facility_summary` pada DTO RS; detail di `docs/DECISIONS.md` dan `docs/archive/API_FRONTEND.md`. Data ICU/NICU/PICU/bed/BPJS RS nyata tetap unknown sampai dikurasi.
 
 Status fase SATUSEHAT MSI (23 Okt 2026): gofmt, build, vet dan seluruh unit test lulus, termasuk adapter OAuth/MSI dengan mock httptest dan workflow sync dengan fake source. Suite integrasi MongoDB (TestMongoTransactions dan TestSATUSEHATImport) lulus terhadap Atlas pada database tes terisolasi. Migration 002 sudah diterapkan ke database siagars. Live Sandbox Jabodetabek berhasil (lihat bagian Sinkronisasi SATUSEHAT).
 
@@ -235,6 +237,13 @@ go run ./cmd/manage curate data/curation/example.placeholder.json   # dry-run; c
 
 Argumen `curate <file> [--apply]` didukung oleh `go run .` dan `go run ./cmd/manage`. `CURATE_FILE` serta `CURATE_APPLY=true` tetap tersedia untuk otomasi berbasis environment. `go test ./seed` menguji validator dan dry-run. `tests/integration/curate_test.go` memerlukan `TEST_MONGODB_URI` dan menguji apply, idempotensi, serta non-overwrite pada database sementara.
 
+## Pendukung keputusan (0.4.0): rekomendasi, kualitas data, markers
+
+- `GET /api/v1/recommendations?services=nicu&lat=-6.23&lng=106.99&radius_km=20&bpjs=required` — skor 0–100 per RS dengan 5 komponen yang dijelaskan, `unknowns`, `flags`, dan `meta.excluded`. Lokasi wajib (`lat`+`lng` atau `province_code`/`city_code`). Rumus dan contoh: `../new/03_KONTRAK_API_v1.md` §4; implementasi murni di `internal/domain/recommend.go`.
+- `data_quality` pada setiap Hospital — skor kualitas **data** (kelengkapan 13 item, kesegaran terburuk, origin mayoritas), `internal/domain/quality.go`.
+- `GET /api/v1/hospitals/markers?bbox=minLng,minLat,maxLng,maxLat` — marker ringan untuk peta (maks 500, bbox ≤ 2°×2°).
+- Jalankan `go run ./cmd/manage migrate` (migration 008 menambah index lokasi) sebelum memakai endpoint ini di database baru. Skor bukan saran medis; jarak garis lurus.
+
 ## Perbandingan RS (compare)
 
 `GET /api/v1/hospitals/compare?ids=<uuid>,<uuid>[,<uuid>]` mengembalikan detail lengkap 2-3 RS dengan urutan sesuai `ids` (`{data:[...], meta:{as_of,count}}`). ID duplikat, kurang dari 2, lebih dari 3 atau bukan UUID lowercase: 422; ada ID tidak ditemukan: 404 dengan pesan menyebut ID itu dan tanpa hasil parsial. RS simulasi dan real dapat dibandingkan sekaligus. Alasan desain: `docs/DECISIONS.md` (paket G).
@@ -242,3 +251,20 @@ Argumen `curate <file> [--apply]` didukung oleh `go run .` dan `go run ./cmd/man
 ## Data contoh fasilitas (`dummy-facilities`)
 
 SATUSEHAT sandbox tidak punya ICU/NICU/PICU/bed/rawat inap/BPJS. `go run ./cmd/manage dummy-facilities` menempelkan data contoh deterministik ke RS impor (bukan RS simulasi) di database yang dipilih `MONGODB_DATABASE`. Semua item berlabel `data_origin=simulation`, tanpa sumber, tanpa `verified_at`; BPJS memakai `bpjs_data_origin=simulation`. Hanya menambah, tidak menimpa data yang ada, aman diulang. **Jalankan hanya pada database dev/staging (`siagars_dev`), bukan production.** `curate` menggantikan item simulasi yang belum diubah operator dengan data bersumber.
+
+## Cek BPJS simulasi (`/bpjs/check`) dan riwayat operator
+
+Simulasi dengan peserta sintetis (NIK fiktif berawalan `9999`, dibuat oleh `seed`); **bukan** BPJS Kesehatan dan tidak memanggil API eksternal. Panduan dan data demo (arsip 0.3.0, bagian reveal sudah tidak berlaku): [`docs/archive/HANDOVER_BE-TO-FE_BPJS.md`](docs/archive/HANDOVER_BE-TO-FE_BPJS.md).
+
+- Urutan setup: `go run ./cmd/manage migrate` (migration 005–007) lalu `go run ./cmd/manage seed`.
+- Sejak 0.3.1 (keputusan D-03) riwayat hanya menyimpan NIK/nama **tersamar**, tahun lahir, hasil, dan `nik_hmac`; NIK/nama asli tidak disimpan dalam bentuk apa pun dan tidak ada endpoint reveal. Migration 006 menghapus `raw_enc` dari entri lama. Entri dihapus otomatis setelah 30 hari (index TTL). Operator melihat riwayat di `GET /admin/bpjs-checks`.
+- Env `BPJS_HISTORY_KEY` (opsional): 32 byte acak, base64 (`python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`), hanya kunci HMAC untuk menghitung `repeat_count`. Tanpa kunci `repeat_count` selalu 1. Jangan commit; pakai kunci berbeda per environment.
+
+## Regenerasi data simulasi harian (`refresh-simulation`)
+
+Data simulasi menjadi `stale` 24 jam setelah ditulis. Job harian menjalankan logika `dummy-facilities` lalu menstempel ulang `source_updated_at`/`synced_at` **hanya** pada item `data_origin=simulation` (layanan, bed, dan RS simulasi seed). Item `curated`/SATUSEHAT tidak pernah ditulis dan `verified_at` tidak pernah diisi; nilai tetap deterministik. Setiap eksekusi dicatat di `audit_logs` (`job.refresh_simulation`, aktor `system:cron` atau `system:cli`).
+
+- Terjadwal: Vercel Cron (`vercel.json`, `0 22 * * *` = 05.00 WIB) memanggil `GET /api/v1/internal/jobs/refresh-simulation` dengan `Authorization: Bearer <CRON_SECRET>`. Set env `JOB_SECRET` (≥ 32 karakter) dan `CRON_SECRET` dengan nilai **sama**. Cron Vercel hanya berjalan di deployment production.
+- Manual / GitHub Actions: `curl -X POST -H "X-Job-Secret: $JOB_SECRET" https://<host>/api/v1/internal/jobs/refresh-simulation`.
+- Lokal: `go run ./cmd/manage refresh-simulation`.
+- Tanpa `JOB_SECRET` endpoint selalu 401. Endpoint ini internal dan tidak ada di OpenAPI publik.

@@ -7,6 +7,7 @@ import (
 	"siagars/backend/internal/repository"
 	"siagars/backend/internal/service"
 	"siagars/backend/seed"
+	"strings"
 	"testing"
 	"time"
 
@@ -160,8 +161,14 @@ func TestExternalLookupRegionsAndSuggest(t *testing.T) {
 	for _, r := range regions {
 		codes[r.Code] = r.Kind
 	}
-	if codes["31"] != "province" || codes["31.71"] != "city" || codes["3171"] != "city" {
-		t.Fatalf("kode seed (31.71) dan MSI (3171) harus sama-sama ada apa adanya: %v", codes)
+	// Since migration 007 seed and MSI share one undotted Kemendagri code; no dotted code is left.
+	if codes["31"] != "province" || codes["3171"] != "city" {
+		t.Fatalf("kode wilayah: %v", codes)
+	}
+	for code := range codes {
+		if strings.Contains(code, ".") {
+			t.Fatalf("kode bertitik tersisa: %s", code)
+		}
 	}
 
 	real, e := p.SuggestHospitals(ctx, "contoh", "real", 10)

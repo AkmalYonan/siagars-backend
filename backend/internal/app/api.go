@@ -26,9 +26,12 @@ func RunAPI() error {
 		return errors.New("invalid database configuration")
 	}
 	defer repo.Close(context.Background())
+	if e = enableBPJSHistory(repo, cfg); e != nil {
+		return e
+	}
 	root, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	server := &http.Server{Addr: ":" + cfg.Port, Handler: api.New(repo, cfg, repo.Ready), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
+	server := &http.Server{Addr: ":" + cfg.Port, Handler: api.New(store{repo}, cfg, repo.Ready), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 	result := make(chan error, 1)
 	go func() {
 		slog.Info("api listening", "port", cfg.Port, "demo_mode", true)

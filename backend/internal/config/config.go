@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/netip"
 	"net/url"
@@ -19,6 +20,12 @@ type Config struct {
 	// AllowedOrigins lists every browser origin accepted for login and mutations (exact match). The first
 	// PUBLIC_ORIGIN entry is the primary one and decides the Secure cookie flag.
 	AllowedOrigins []string
+	// BPJSHistoryKey is the 32-byte server secret for the keyed NIK fingerprint (HMAC) of BPJS history;
+	// nil means no fingerprint. History is always masked only.
+	BPJSHistoryKey []byte
+	// JobSecret authorizes /internal/jobs/* (header X-Job-Secret, or Vercel Cron's bearer token); empty
+	// disables every job endpoint.
+	JobSecret string
 	// TrustedProxies are the networks whose X-Forwarded-For header is believed; empty means never.
 	TrustedProxies []netip.Prefix
 	SATUSEHAT      SATUSEHATConfig
@@ -106,6 +113,16 @@ func Load() (Config, error) {
 	}
 	if c.SATUSEHAT, e = LoadSATUSEHAT(); e != nil {
 		return c, e
+	}
+	if raw := strings.TrimSpace(os.Getenv("BPJS_HISTORY_KEY")); raw != "" {
+		key, e := base64.StdEncoding.DecodeString(raw)
+		if e != nil || len(key) != 32 {
+			return c, fmt.Errorf("BPJS_HISTORY_KEY must be 32 random bytes, base64-encoded")
+		}
+		c.BPJSHistoryKey = key
+	}
+	if c.JobSecret = strings.TrimSpace(os.Getenv("JOB_SECRET")); c.JobSecret != "" && len(c.JobSecret) < 32 {
+		return c, fmt.Errorf("JOB_SECRET must be at least 32 characters")
 	}
 	return c, nil
 }

@@ -1,5 +1,7 @@
 # AGENTS.md - SiagaRS Backend
 
+> **Acuan kerja terbaru (26 Okt 2026): SiagaRS v1.** Baca dulu folder [`../new/`](../new/README.md): [`new/AGENTS.md`](../new/AGENTS.md) (aturan kerja BE v1), [`new/PRD.md`](../new/PRD.md) (PRD BE v1), [`new/02_ROADMAP_PHASE_VERSI.md`](../new/02_ROADMAP_PHASE_VERSI.md) (tiket `BE-xx`), [`new/03_KONTRAK_API_v1.md`](../new/03_KONTRAK_API_v1.md). Bila bertentangan dengan isi di bawah, **`new/` yang berlaku** — termasuk keputusan D-03: cek BPJS tidak lagi menyimpan NIK mentah (hapus `raw_enc` dan endpoint reveal). Isi di bawah adalah aturan V0.1 yang tetap berlaku selama tidak bertentangan.
+
 Instruksi untuk coding agent di repository backend Go. Versi kerja V0.1 diperbarui 24 Oktober 2026. Baca PRD.md, status workspace, go.mod, README.md, dan docs/DECISIONS.md sebelum mengubah kode.
 
 ## Mandat dan kepemilikan
@@ -7,13 +9,13 @@ Instruksi untuk coding agent di repository backend Go. Versi kerja V0.1 diperbar
 - Akmal Bariq Yonanda pemilik backend; M. Tauriq Arya pemilik frontend/integrasi; Radja Admiral ketua/reviewer scope.
 - Bangun Go REST API + MongoDB (Atlas) untuk pencarian RS, provenance, tracking sintetis, auth/operator dan audit.
 - Implementasikan Must dahulu. Integrasi sandbox opsional dan dinonaktifkan default; layanan inti harus berjalan dengan seed data.
-- Tidak ada data pasien nyata, NIK, diagnosis, pembayaran atau rujukan produksi pada V0.1.
+- Tidak ada data pasien nyata, NIK, diagnosis, pembayaran atau rujukan produksi pada V0.1. Satu pengecualian yang diputuskan pemilik (25 Okt 2026): input halaman cek BPJS simulasi dicatat untuk riwayat operator, hanya tersamar + terenkripsi (kunci `BPJS_HISTORY_KEY` di environment backend), dihapus otomatis setelah 30 hari, dan data asli hanya terbuka lewat re-autentikasi operator dengan audit. Jangan memperluas pencatatan ini ke endpoint lain atau me-log input.
 
 ## Kontrak
 
 - `docs/openapi.yaml` adalah sumber kontrak saat implementasi dimulai; sertakan contoh sukses/galat dan enum.
 - Prefix `/api/v1`, JSON snake_case, UUID opaque, RFC3339 UTC. FE menggunakan snapshot versi yang sama.
-- API memiliki 19 operasi: health/readiness; layanan; wilayah; daftar, detail, compare, dan autocomplete RS; lookup tracking; auth; serta operasi admin (referral, daftar/detail RS dalam scope, update layanan/bed). `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
+- API memiliki 22 operasi: health/readiness; layanan; wilayah; daftar, detail, compare, dan autocomplete RS; lookup tracking; auth; cek BPJS simulasi; serta operasi admin (referral, daftar/detail RS dalam scope, update layanan/bed, riwayat cek BPJS dan reveal). `docs/openapi.yaml` memuat daftar lengkap dan menjadi sumber kontrak.
 - Jangan mengubah endpoint, enum, pagination atau makna null tanpa memperbarui OpenAPI, fixture dan koordinasi frontend.
 - `services` AND; limit default 20/max50; parameter unknown 422. Jarak Haversine garis lurus, bukan ETA atau ukuran kualitas klinis.
 - Unknown = null/status unknown. Bed 0 bukan unknown. Freshness terpisah dari origin/verifikasi dan dihitung berdasarkan source_updated_at, bukan synced_at.

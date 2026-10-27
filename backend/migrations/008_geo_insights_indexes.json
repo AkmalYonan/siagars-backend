@@ -1,0 +1,5 @@
+{"commands": [
+ {"createIndexes": "hospitals", "indexes": [
+  {"key": {"data_origin": 1, "latitude": 1, "longitude": 1}, "name": "hospitals_dataset_geo_idx"},
+  {"key": {"data_origin": 1, "city_code": 1, "services.slug": 1, "services.status": 1}, "name": "hospitals_dataset_city_services_idx"}]}
+]}

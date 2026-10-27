@@ -22,7 +22,7 @@ import (
 // both matching and non-matching rows, including freshness boundaries.
 func syntheticHospitals(n int, now time.Time) []repository.HospitalDoc {
 	r := rand.New(rand.NewSource(7))
-	cities := [][2]string{{"31.71", "31"}, {"32.71", "32"}, {"32.75", "32"}, {"36.71", "36"}}
+	cities := [][2]string{{"3171", "31"}, {"3271", "32"}, {"3275", "32"}, {"3671", "36"}}
 	words := []string{"Sehat", "Harapan", "Medika", "Bunda", "Sentosa", "Mulia", "Kasih", "Prima"}
 	slugs := []string{"icu", "nicu", "picu", "igd-24h", "ambulance"}
 	statuses := []string{"available", "limited", "unavailable", "unknown"}
@@ -125,7 +125,7 @@ func TestSearchPushdownMatchesInMemory(t *testing.T) {
 			s.Province = []string{"31", "32", "36"}[r.Intn(3)]
 		}
 		if r.Intn(3) == 0 {
-			s.City = []string{"31.71", "32.71", "32.75", "36.71", "36.74"}[r.Intn(5)]
+			s.City = []string{"3171", "3271", "3275", "3671", "3674"}[r.Intn(5)]
 		}
 		s.Q = []string{"", "", "rs", "SEHAT", "sehat jakarta", "rs sehat", "bogor", "banten", "zzz-none", "% (.*)", "simulasi siaga 0"}[r.Intn(11)]
 		s.BPJS = []*bool{nil, &yes, &no}[r.Intn(3)]

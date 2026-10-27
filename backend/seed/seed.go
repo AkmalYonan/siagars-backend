@@ -44,7 +44,7 @@ func Apply(ctx context.Context, p *repository.Mongo) error {
 func apply(ctx context.Context, db *mongo.Database) error {
 	at := time.Now().UTC().Truncate(time.Millisecond)
 	ordered := options.BulkWrite().SetOrdered(true)
-	regions := [][4]string{{"31", "", "province", "DKI Jakarta"}, {"32", "", "province", "Jawa Barat"}, {"36", "", "province", "Banten"}, {"31.71", "31", "city", "Jakarta Selatan"}, {"32.71", "32", "city", "Kota Bogor"}, {"32.75", "32", "city", "Kota Bekasi"}, {"32.76", "32", "city", "Kota Depok"}, {"36.71", "36", "city", "Kota Tangerang"}, {"36.74", "36", "city", "Kota Tangerang Selatan"}}
+	regions := [][4]string{{"31", "", "province", "DKI Jakarta"}, {"32", "", "province", "Jawa Barat"}, {"36", "", "province", "Banten"}, {"3171", "31", "city", "Jakarta Selatan"}, {"3271", "32", "city", "Kota Bogor"}, {"3275", "32", "city", "Kota Bekasi"}, {"3276", "32", "city", "Kota Depok"}, {"3671", "36", "city", "Kota Tangerang"}, {"3674", "36", "city", "Kota Tangerang Selatan"}}
 	models := []mongo.WriteModel{}
 	for _, r := range regions {
 		var parent any
@@ -64,7 +64,7 @@ func apply(ctx context.Context, db *mongo.Database) error {
 	if _, e := db.Collection("services").BulkWrite(ctx, models, ordered); e != nil {
 		return e
 	}
-	cities := [][2]string{{"31.71", "31"}, {"32.71", "32"}, {"32.75", "32"}, {"32.76", "32"}, {"36.71", "36"}, {"36.74", "36"}}
+	cities := [][2]string{{"3171", "31"}, {"3271", "32"}, {"3275", "32"}, {"3276", "32"}, {"3671", "36"}, {"3674", "36"}}
 	address := "Alamat sintetis untuk pengujian, bukan fasilitas nyata"
 	models = []mongo.WriteModel{}
 	for n := 1; n <= 30; n++ {
@@ -96,6 +96,14 @@ func apply(ctx context.Context, db *mongo.Database) error {
 		}
 	}
 	if _, e := db.Collection("hospitals").BulkWrite(ctx, models, ordered); e != nil {
+		return e
+	}
+	models = []mongo.WriteModel{}
+	for _, m := range BPJSDemoMembers {
+		models = append(models, insertOnly(m.NIK, bson.D{{Key: "name", Value: m.Name}, {Key: "birth_date", Value: m.BirthDate}, {Key: "status", Value: m.Status}, {Key: "inactive_reason", Value: m.InactiveReason},
+			{Key: "membership_code", Value: m.MembershipCode}, {Key: "membership_name", Value: m.MembershipName}, {Key: "care_class", Value: m.CareClass}, {Key: "facility_code", Value: m.FacilityCode}, {Key: "facility_name", Value: m.FacilityName}}))
+	}
+	if _, e := db.Collection("bpjs_participants").BulkWrite(ctx, models, ordered); e != nil {
 		return e
 	}
 	result, e := db.Collection("referrals").UpdateOne(ctx, key(ReferralID), bson.D{{Key: "$setOnInsert", Value: bson.D{

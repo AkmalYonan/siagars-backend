@@ -2,6 +2,72 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## 0.4.0 (draf X-01, 26 Okt 2026) - Decision Core (BE-10, BE-11, BE-12)
+
+Draf kontrak untuk dibekukan di X-01 (review FE, approve PM). Contoh respons lengkap ada di [`fixtures.json`](fixtures.json) (`recommendations`, `markers`, `hospital_detail.data.data_quality`) sehingga FE bisa membangun `/pilih-rs` sebelum endpoint live.
+
+### Baru
+| Endpoint / field | Fungsi |
+|---|---|
+| `GET /recommendations` | Rekomendasi ber-skor 0–100 + `level` + 5 komponen yang dijelaskan (`reason` Bahasa Indonesia) + `unknowns` + `flags`. Filter keras dihitung di `meta.excluded`. `meta.algorithm_version = "1"`. Rumus: `new/03_KONTRAK_API_v1.md` §4. |
+| `GET /hospitals/markers?bbox=` | Marker ringan (maks 500, `meta.truncated`) dengan `match` (all/partial/none), `data_quality_label`, `has_simulated_data`. bbox > 2° × 2° → 422. |
+| `data_quality` (Hospital) | `{score, label, completeness, freshness, primary_origin}` di daftar, detail, compare, tujuan lookup, dan admin. Skor kualitas **data**, bukan kualitas RS. |
+
+### Catatan untuk FE
+- Jangan menghitung ulang skor atau `data_quality`; tampilkan apa adanya (kontrak §8).
+- `distance_km` = garis lurus; tampilkan "± X km garis lurus", bukan waktu tempuh.
+- RS dengan `flags` `contains_simulated_data` wajib diberi label "Simulasi".
+- `/recommendations` butuh `services` dan lokasi (`lat`+`lng` atau `province_code`/`city_code`); tanpa itu 422.
+- Kartu RS rekomendasi memakai `hospital.lat`/`hospital.lng` (bukan `latitude`/`longitude` seperti DTO Hospital penuh).
+
+### Backend
+- Migration `008_geo_insights_indexes`: index `{data_origin, latitude, longitude}` (kandidat & markers) dan `{data_origin, city_code, services.slug, services.status}` (insights v0.5).
+- Skor & kualitas data = fungsi murni di `internal/domain` (`recommend.go`, `quality.go`) dengan test tabel (≥ 15 kasus rekomendasi).
+
+## 0.3.1 (26 Okt 2026) - Stabilisasi (BE-01, BE-03, BE-05, BE-06, BE-08)
+
+### Perubahan perilaku
+| Area | Sebelum (0.3.0) | Sekarang (0.3.1) |
+|---|---|---|
+| `POST /admin/bpjs-checks/{id}/reveal` | Membuka NIK/nama asli setelah re-autentikasi | **Dihapus** (404). Keputusan D-03: NIK/nama asli tidak disimpan dalam bentuk apa pun, termasuk terenkripsi. |
+| Riwayat cek BPJS | Tersamar + `raw_enc` (AES-GCM) + `nik_hmac` | Hanya tersamar + `nik_hmac` (untuk `repeat_count`). Migrasi `006_bpjs_no_raw` menghapus `raw_enc` dari entri lama dan validator menolaknya. |
+| Kode wilayah | Seed `31.71`, MSI `3171` hidup berdampingan (nama kota ganda di `/regions`) | Satu format Kemendagri tanpa titik (`31`, `3171`). Migrasi `007_region_codes`; filter dengan kode bertitik kini **422**. |
+
+### Kontrak (aditif / pelonggaran)
+- `GET /admin/referrals`: tiap item punya `hospital_name` (nama RS pemilik). Skema baru `AdminReferral`. FE bisa menghapus lookup nama RS per baris.
+- `POST /auth/login`: `csrf_token` kini **opsional** di respons. Bila tidak ada, panggil `GET /auth/csrf` sebelum mutasi. (Backend masih mengirimkannya.)
+- `bpjs_data_origin` (Hospital) dan `facility_summary.data_origin` didokumentasikan sebagai `DataOrigin | null`.
+- Skema `Error` seragam: `{ error: { code, message, details? }, request_id }`; `code` kini enum yang lengkap (lihat OpenAPI). `details` opsional (`[{field, issue}]`). Gangguan init serverless (503) kini juga memakai skema ini, bukan `{"error":"service_unavailable"}`.
+
+### Internal (di luar kontrak publik)
+- `POST /api/v1/internal/jobs/refresh-simulation` (header `X-Job-Secret`) dan `GET` yang sama dengan `Authorization: Bearer <JOB_SECRET>` untuk Vercel Cron (harian 22.00 UTC = 05.00 WIB, `vercel.json`). Menjalankan logika `dummy-facilities` lalu menstempel ulang `source_updated_at` **hanya** item `data_origin=simulation`, sehingga data simulasi `fresh` tiap pagi. Data `curated`/SATUSEHAT tidak pernah ditulis; `verified_at` tidak pernah diisi. Audit `job.refresh_simulation` (aktor `system:cron`). Tanpa `JOB_SECRET` endpoint selalu 401. CLI setara: `go run ./cmd/manage refresh-simulation`.
+
+### Yang harus dilakukan FE
+- Ubah copy `/cek-bpjs`: *"Kami tidak menyimpan NIK lengkap Anda. Riwayat pengecekan disimpan dalam bentuk tersamar selama 30 hari."* Hapus UI "Lihat data asli".
+- Pakai `hospital_name` di daftar rujukan operator (FE-05).
+- Pastikan kode wilayah selalu diambil dari `/regions` (jangan menulis kode bertitik).
+- Perbarui `lib/contracts/types.ts`: `LoginResult.csrf_token?`, `Error.error.details?`, `AdminReferral`.
+
+### Operasional
+- Env baru `JOB_SECRET` (≥ 32 karakter) di backend; di Vercel set juga `CRON_SECRET` dengan nilai yang sama agar Vercel Cron mengirim bearer token. `BPJS_HISTORY_KEY` kini hanya untuk HMAC.
+- Urutan rilis: backup/snapshot Atlas → `go run ./cmd/manage migrate` (005, 006, 007) → `seed` → smoke test.
+
+## 0.3.0 (25 Okt 2026) - branch `develop` (staging)
+
+### Baru: cek BPJS (simulasi) dan riwayat operator
+| Endpoint | Fungsi |
+|---|---|
+| `POST /bpjs/check` | Publik. Mencocokkan NIK + nama + tanggal lahir ke **peserta sintetis**; bukan BPJS Kesehatan. Respons tersamar, `data_origin: "simulation"`, rate limit 10/menit/IP. |
+| `GET /admin/bpjs-checks` | Riwayat pemeriksaan (tersamar) untuk semua operator login. |
+| `POST /admin/bpjs-checks/{id}/reveal` | Membuka data asli satu entri setelah operator memasukkan ulang passwordnya; diaudit. |
+
+Panduan dan data demo: [`archive/HANDOVER_BE-TO-FE_BPJS.md`](archive/HANDOVER_BE-TO-FE_BPJS.md). Total 22 operasi; perubahan aditif.
+
+### Yang harus dilakukan FE
+- Ubah teks persetujuan `/cek-bpjs`: input **dicatat** untuk riwayat operator (tersamar + terenkripsi, dihapus otomatis setelah 30 hari). Usulan kalimat ada di handover.
+- Tambahkan halaman riwayat operator dan dialog password untuk "Lihat data asli".
+- Backend: migration 005 (koleksi `bpjs_participants`, `bpjs_check_history` dengan index TTL 30 hari) dan env baru `BPJS_HISTORY_KEY` (opsional; tanpa kunci hanya data tersamar yang disimpan dan reveal membalas 409).
+
 ## 0.2.1 (25 Okt 2026) - branch `develop` (staging)
 
 ### Baru: data contoh fasilitas untuk RS nyata

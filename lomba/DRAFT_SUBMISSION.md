@@ -2,7 +2,7 @@
 
 Bahan untuk dokumen PDF First Draft Submission WIA (MIA 2026). Ini kerangka isi per halaman, bukan PDF jadi. Pindahkan ke PowerPoint/Google Slides/Canva lalu ekspor ke PDF.
 
-Sumber aturan: Guidebook WIA bagian J dan PPT Technical Meeting (slide "First Draft Submission"). Sumber isi versi berjalan: `backend/PRD.md`, `backend/README.md`, `backend/docs/DECISIONS.md`, dan `backend/docs/openapi.yaml`.
+Sumber aturan: Guidebook WIA bagian J dan PPT Technical Meeting (slide "First Draft Submission"). Sumber isi versi berjalan: `backend/PRD.md`, `backend/README.md`, `backend/docs/DECISIONS.md`, `backend/docs/CHANGELOG.md`, dan `backend/docs/openapi.yaml` (API 0.3.0 di staging, 0.2.1 di production; diperbarui 26 Oktober 2026).
 
 ## Ketentuan berkas (dari dokumen panitia)
 
@@ -62,15 +62,17 @@ Struktur halaman rencana dari Scope_MVP bagian 08:
 ├── /rumah-sakit         Pencarian, filter, peta/daftar, pagination
 │   └── /rumah-sakit/[id]  Profil, fasilitas, bed, sumber, telepon/rute
 ├── /lacak-rujukan       Form kode demo + timeline sintetis
+├── /cek-bpjs            Cek kepesertaan BPJS simulasi (peserta sintetis)
 ├── /tentang-data        Cakupan, provenance, kesegaran, keterbatasan
 ├── /bandingkan          2-3 RS (prioritas Should)
 └── /operator
     ├── /operator/login
     ├── /operator/rujukan
-    └── /operator/layanan
+    ├── /operator/layanan
+    └── /operator/riwayat-bpjs  Riwayat cek BPJS (tersamar, lihat data asli dengan password)
 ```
 
-**[ISI: gambar diagram sitemap di slide. Tandai halaman yang sudah ada vs masih rencana. Status halaman frontend tidak tercatat di dokumen backend.]**
+**[ISI: gambar diagram sitemap di slide. Tandai halaman yang sudah ada vs masih rencana. Status halaman frontend tidak tercatat di dokumen backend; frontend ter-deploy di `https://frontend-siagars.vercel.app`, nama rute final ikuti frontend.]**
 
 ## Halaman 4 - Alur pengguna
 
@@ -80,7 +82,8 @@ Tiga peran dari Scope_MVP bagian 02 dan 06:
 |---|---|
 | Keluarga pasien | cari lokasi, pilih layanan, hasil peta/daftar, detail sumber dan status, hubungi RS atau buka navigasi |
 | Pelacak kode demo | masukkan kode sintetis, status saat ini, riwayat waktu, langkah berikutnya (seluruh halaman berlabel simulasi) |
-| Operator demo | login, daftar rujukan milik RS, ubah status sesuai transisi, simpan; pengguna refresh dan melihat event baru. Operator juga mengubah status layanan/bed pada RS yang ditugaskan |
+| Pengecek BPJS (simulasi) | masukkan NIK, nama, tanggal lahir peserta demo; lihat status kepesertaan tersamar berlabel simulasi |
+| Operator demo | login, daftar rujukan milik RS, ubah status sesuai transisi, simpan; pengguna refresh dan melihat event baru. Operator juga mengubah status layanan/bed pada RS yang ditugaskan dan melihat riwayat cek BPJS |
 
 Cerita demo (Scope_MVP bagian 07): "Rina" mencari RS dengan NICU dan BPJS di wilayah pilot, membedakan data yang diketahui, stale dan simulasi, memeriksa kontak, lalu melacak kode demo. **[ISI: gambar user journey; Rina adalah tokoh fiktif untuk skenario, tulis demikian.]**
 
@@ -99,9 +102,10 @@ Prioritas dari Scope_MVP bagian 03:
 | Prioritas | Fitur |
 |---|---|
 | Must | landing; pencarian nama/kota/provinsi; filter layanan/BPJS; peta+daftar; detail; sumber+waktu; tracking sintetis; operator minimum; UI state lengkap |
-| Should | bandingkan 2-3 RS; sort kecocokan/jarak; filter bed; berbagi profil |
+| Should | bandingkan 2-3 RS; sort kecocokan/jarak; filter bed; berbagi profil; autocomplete nama RS |
+| Tambahan 0.3.0 | cek kepesertaan BPJS simulasi + riwayat operator (backend siap di staging) |
 | Could | favorit lokal, geolokasi, PWA, dark mode, statistik persebaran |
-| Di luar V0.1 | diagnosis, rekam medis, NIK, booking, pembayaran, chat dokter, klaim BPJS, ambulans live, rujukan produksi |
+| Di luar V0.1 | diagnosis, rekam medis, booking, pembayaran, chat dokter, klaim BPJS, cek BPJS Kesehatan sungguhan, ambulans live, rujukan produksi |
 
 **[ISI: beri tanda tiap fitur: sudah jalan / sedang dikerjakan / rencana, berdasarkan status frontend nyata saat draft dibekukan. Jangan menandai "sudah jalan" tanpa menjalankannya.]**
 
@@ -111,36 +115,41 @@ Isi yang didukung kode dan README backend:
 
 - Stack: Go 1.27.1, net/http ServeMux, MongoDB Atlas lewat go.mongodb.org/mongo-driver/v2 v2.9.2, bcrypt cost 12.
 - Arsitektur: handler HTTP, service (aturan bisnis), repository (MongoDB), domain (state machine, freshness, Haversine), adapter SATUSEHAT. Prefix `/api/v1`, JSON snake_case, timestamp RFC3339 UTC.
-- Kontrak saat ini memiliki 15 operasi API. Sumber kontrak adalah `docs/openapi.yaml`; Swagger UI tersedia di `/docs` saat API berjalan:
+- Kontrak saat ini (0.3.0) memiliki 22 operasi API; production masih 0.2.1 (19 operasi, tanpa cek BPJS). Sumber kontrak adalah `docs/openapi.yaml`; Scalar API Reference tersedia di `/docs` (publik: `https://siagars-backend.vercel.app/docs`):
 
 | Method | Path | Fungsi |
 |---|---|---|
 | GET | /health, /ready | liveness; readiness DB |
-| GET | /services | master layanan |
-| GET | /hospitals, /hospitals/{id} | pencarian/filter/pagination; detail |
+| GET | /services, /regions | master layanan; provinsi + kota/kabupaten |
+| GET | /hospitals, /hospitals/{id} | pencarian/filter/pagination; detail (UUID atau kode SATUSEHAT) |
+| GET | /hospitals/suggest | autocomplete nama RS |
 | GET | /hospitals/compare | bandingkan 2-3 RS |
 | POST | /referrals/lookup | tracking sintetis lewat body |
+| POST | /bpjs/check | cek kepesertaan BPJS simulasi (0.3.0) |
 | POST | /auth/login, /auth/logout | session operator |
 | GET | /auth/me, /auth/csrf | profil+RS izin; token CSRF |
+| GET | /admin/hospitals, /admin/hospitals/{id} | RS dalam scope operator |
 | GET | /admin/referrals | rujukan RS operator |
 | PATCH | /admin/referrals/{id}/status | ubah status (version, CSRF, scope RS) |
 | PATCH | /admin/hospitals/{id}/services/{slug} | ubah status layanan |
 | PATCH | /admin/hospitals/{id}/beds/{category} | ubah bed |
+| GET | /admin/bpjs-checks | riwayat cek BPJS (tersamar) (0.3.0) |
+| POST | /admin/bpjs-checks/{id}/reveal | buka data asli dengan password ulang, diaudit (0.3.0) |
 
-- Aturan yang sudah ada di kode: filter `services` memakai AND; limit default 20 maksimum 50; parameter tak dikenal 422; `dataset=real|simulation|all`; state machine rujukan submitted, verified, searching, confirmed, completed (rejected terminal); optimistic locking version dan konflik 409; session cookie HttpOnly dengan CSRF dan validasi Origin; rate limit login dan lookup.
-- Keamanan data: tidak ada data pasien; kode tracking dan token session disimpan sebagai hash; credential tidak ada di repo.
+- Aturan yang sudah ada di kode: filter `services` memakai AND; limit default 20 maksimum 50; parameter tak dikenal 422; `dataset=real|simulation|all`; state machine rujukan submitted, verified, searching, confirmed, completed (rejected terminal); optimistic locking version dan konflik 409; session cookie HttpOnly dengan CSRF dan validasi Origin; rate limit login, lookup, dan cek BPJS; header `X-Frame-Options` dan `Referrer-Policy`.
+- Keamanan data: tidak ada data pasien atau rekam medis; kode tracking dan token session disimpan sebagai hash; credential tidak ada di repo. Cek BPJS simulasi mencatat input pengguna untuk riwayat operator: tersamar, data asli terenkripsi AES-256-GCM, dihapus otomatis setelah 30 hari; tulis demikian, jangan menulis "tidak menyimpan NIK".
 - Catatan untuk juri: Q&A panitia no. 34 menyatakan backend menjadi poin plus selain frontend. Itu pernyataan panitia, bukan jaminan nilai.
 
-**[PLACEHOLDER: diagram arsitektur: Browser, reverse proxy, Next.js, Go API, MongoDB Atlas, adapter SATUSEHAT Sandbox (manual, read-only).]**
+**[PLACEHOLDER: diagram arsitektur: Browser, Next.js di Vercel (rewrite `/api/v1`), Go API serverless di Vercel, MongoDB Atlas, adapter SATUSEHAT Sandbox (manual, read-only).]**
 
 ## Halaman 8 - Data, sumber dan kesegaran
 
 - Empat atribut per informasi: `data_origin` (curated, simulation, satusehat_sandbox, satusehat_production), `source_updated_at`, `synced_at`, `verified_at`. Layanan dan bed punya metadata sendiri.
 - Kesegaran (kebijakan demo, bukan standar medis): fresh <1 jam; aging 1-24 jam; stale >24 jam; unknown bila timestamp tidak ada atau tidak valid.
 - Null berbeda dari nol: `available=null` berarti belum diketahui, `available=0` berarti menurut sumber tidak ada bed kosong; BPJS null bukan false.
-- Seed sintetis: 30 RS fiktif bernama RS Simulasi Siaga 01..30, 5 layanan, 4 kategori bed; seluruhnya berlabel simulation. Alamat dan koordinat sintetis. Q&A panitia no. 5 dan 40 mengizinkan data dummy tetapi menyarankan data nyata atau mendekati nyata.
-- Data nyata: adapter Master Sarana Index SATUSEHAT **Sandbox** (read-only) berhasil diuji live pada 23 Oktober 2026 untuk Jabodetabek: 14 kab/kota, 516 RS dibuat, 0 skip/gagal; run kedua 516 unchanged. Tulis sebagai "data Sandbox", bukan data produksi. RS dari MSI belum punya layanan/bed/BPJS (null/kosong), sehingga filter layanan pada data nyata belum menghasilkan apa pun. **[BELUM TERBUKTI: kurasi 30-50 RS dengan minimal 10 profil lengkap belum ada.]**
-- Jangan menyatakan "terhubung ke SATUSEHAT produksi" atau "rujukan resmi": tidak ada di kode.
+- Seed sintetis: 30 RS fiktif bernama RS Simulasi Siaga 01..30, 6 layanan (termasuk `rawat-inap`), 4 kategori bed; seluruhnya berlabel simulation. Seed juga memuat 5 peserta BPJS sintetis (NIK fiktif berawalan `9999`). Alamat dan koordinat sintetis. Q&A panitia no. 5 dan 40 mengizinkan data dummy tetapi menyarankan data nyata atau mendekati nyata.
+- Data nyata: adapter Master Sarana Index SATUSEHAT **Sandbox** (read-only) berhasil diuji live pada 23 Oktober 2026 untuk Jabodetabek: 14 kab/kota, 516 RS dibuat, 0 skip/gagal; run kedua 516 unchanged. Tulis sebagai "data Sandbox", bukan data produksi. MSI tidak menyediakan layanan/bed/BPJS. Agar UI bisa dibangun dengan nama RS nyata, RS MSI diberi **data contoh** deterministik berlabel `simulation` (`facility_summary.data_origin`, `bpjs_data_origin`); itu bukan fakta RS dan wajib berlabel "Simulasi" di slide. Data RS juga memuat kelas/jenis RS (`facility_class`, `facility_subtype`) dari MSI. Pipeline kurasi `curate` (sumber + tanggal wajib) sudah ada. **[BELUM TERBUKTI: kurasi 30-50 RS dengan minimal 10 profil lengkap bersumber belum ada.]**
+- Jangan menyatakan "terhubung ke SATUSEHAT produksi", "rujukan resmi", atau "cek BPJS Kesehatan": tidak ada di kode. Tidak ada API publik BPJS untuk cek kepesertaan; fitur ini simulasi.
 
 ## Halaman 9 - Screenshot halaman yang sudah dikerjakan
 
@@ -150,15 +159,15 @@ Wajib minimal 2 halaman: landing page + 1 halaman lain.
 |---|---|---|
 | 1 | Landing (`/`) | **[PLACEHOLDER: screenshot nyata]** |
 | 2 | Pilih salah satu: hasil pencarian / detail RS / lacak rujukan / operator | **[PLACEHOLDER: screenshot nyata]** |
-| 3 (opsional) | Swagger UI `/docs` untuk bagian API | **[PLACEHOLDER: screenshot nyata dari API lokal]** |
+| 3 (opsional) | Scalar API Reference `/docs` untuk bagian API | **[PLACEHOLDER: screenshot nyata dari `https://siagars-backend.vercel.app/docs`]** |
 
-Aturan: ambil screenshot dari aplikasi yang benar-benar berjalan; data simulasi harus terlihat berlabel; jangan menampilkan secret, email operator nyata, atau URL query berisi kode. Backend sudah tersedia di Vercel dan lolos smoke test publik dasar; bukti integrasi frontend ke backend belum ada.
+Aturan: ambil screenshot dari aplikasi yang benar-benar berjalan; data simulasi harus terlihat berlabel; jangan menampilkan secret, email operator nyata, atau URL query berisi kode. Backend production di Vercel lolos 32 pemeriksaan publik dan 15 pemeriksaan login/mutasi operator dari origin FE (25 Oktober 2026); screenshot frontend tetap harus diambil dari `https://frontend-siagars.vercel.app` atau FE lokal yang benar-benar berjalan.
 
 ## Halaman 10 - Progres dan rencana
 
-Progres yang bisa dibuktikan per 24 Oktober 2026: API Go + MongoDB Atlas, migration 001-003, seed idempotent, adapter MSI Sandbox, query pushdown, compare RS, benchmark pencarian, dokumentasi OpenAPI, dan deployment Vercel. Gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus.
+Progres yang bisa dibuktikan per 26 Oktober 2026: API Go + MongoDB Atlas (22 operasi, versi 0.3.0 di staging), migration 001-005, seed idempotent, adapter MSI Sandbox (516 RS), data contoh fasilitas berlabel simulasi, `facility_summary`, wilayah dan autocomplete, compare RS (UUID atau kode SATUSEHAT), query pushdown, benchmark pencarian, pipeline kurasi, cek BPJS simulasi + riwayat operator terenkripsi, dokumentasi OpenAPI (Scalar), deployment Vercel production dan staging, serta uji login/mutasi operator di production dari origin FE. Gofmt, build, vet, unit test, contract test, dan suite integrasi Atlas tercatat lulus.
 
-Belum terbukti dan harus tertulis jujur: E2E frontend-backend, Docker, race detector, kurasi RS nyata, uji usability <60 detik, login/mutasi produksi, dan SATUSEHAT produksi. Status frontend **[ISI]**.
+Belum terbukti dan harus tertulis jujur: E2E UI frontend-backend, suite `qa/` terhadap production, rilis cek BPJS ke production, transisi status rujukan di production, Docker, race detector, kurasi RS nyata bersumber, uji usability <60 detik, dan SATUSEHAT/BPJS produksi. Status frontend **[ISI]**.
 
 Rencana dari Scope_MVP bagian 10: QA responsif/aksesibilitas 30 Oktober; freeze draft 31 Oktober; First Draft 1 November; review mentor 3-6 November; feedback 7 November; revisi 8-10 November; final 11 November.
 

@@ -21,7 +21,7 @@ func TestApplyDummyFacilities(t *testing.T) {
 	ns := seed.DefaultCurationNamespace
 	mk := func(id, ext string) repository.HospitalDoc {
 		x := ext
-		return repository.HospitalDoc{ID: id, ExternalID: &x, SourceNamespace: &ns, Name: "RS " + ext, CityCode: "31.71", ProvinceCode: "31",
+		return repository.HospitalDoc{ID: id, ExternalID: &x, SourceNamespace: &ns, Name: "RS " + ext, CityCode: "3171", ProvinceCode: "31",
 			ProvenanceDoc: repository.ProvenanceDoc{DataOrigin: "satusehat_sandbox", SyncedAt: &at}, Services: []repository.ServiceDoc{}, Beds: []repository.BedDoc{}}
 	}
 	real1, real2 := mk("40000000-0000-4000-8000-000000000011", "DUMMY-1"), mk("40000000-0000-4000-8000-000000000012", "DUMMY-2")

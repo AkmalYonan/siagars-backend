@@ -46,11 +46,11 @@ type InpatientBeds struct {
 // FacilitySummary is a read-only roll-up of what is known about ICU/NICU/PICU, inpatient care and BPJS,
 // so clients need not walk the services/beds arrays. Missing data stays "unknown"/null.
 type FacilitySummary struct {
-	ICU                 string        `json:"icu"`
-	NICU                string        `json:"nicu"`
-	PICU                string        `json:"picu"`
-	RawatInap           string        `json:"rawat_inap"`
-	BPJS                *bool         `json:"bpjs"`
+	ICU       string `json:"icu"`
+	NICU      string `json:"nicu"`
+	PICU      string `json:"picu"`
+	RawatInap string `json:"rawat_inap"`
+	BPJS      *bool  `json:"bpjs"`
 	// DataOrigin is "simulation" when any figure above is synthetic; otherwise the origin of the known
 	// figures, or null when nothing is known.
 	DataOrigin          *string       `json:"data_origin"`
@@ -80,9 +80,11 @@ type Hospital struct {
 	FacilitySubtype     *Coded     `json:"facility_subtype"`
 	Operational         *bool      `json:"operational"`
 	Provenance
-	Summary  FacilitySummary `json:"facility_summary"`
-	Services []Service       `json:"services"`
-	Beds     []Bed           `json:"beds"`
+	Summary FacilitySummary `json:"facility_summary"`
+	// DataQuality is derived at render time (see ComputeDataQuality); it is never stored.
+	DataQuality DataQuality `json:"data_quality"`
+	Services    []Service   `json:"services"`
+	Beds        []Bed       `json:"beds"`
 }
 
 // Region is one province or city from the regions master; codes are used exactly as stored.
@@ -117,6 +119,13 @@ type Referral struct {
 	Version               int       `json:"version"`
 	IsDemo                bool      `json:"is_demo"`
 	UpdatedAt             time.Time `json:"updated_at"`
+}
+
+// AdminReferral is the operator list view of a referral: the referral plus the owner hospital's name,
+// joined by the server so clients need no per-row hospital lookup.
+type AdminReferral struct {
+	Referral
+	HospitalName string `json:"hospital_name"`
 }
 type Operator struct {
 	ID          string   `json:"id"`
@@ -181,6 +190,7 @@ func (h *Hospital) Refresh(now time.Time) {
 		h.Beds[i].Freshness = Freshness(h.Beds[i].SourceUpdatedAt, now)
 	}
 	h.Summary = h.summary()
+	h.DataQuality = ComputeDataQuality(*h, now)
 }
 
 func (h *Hospital) summary() FacilitySummary {

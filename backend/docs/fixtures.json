@@ -4,7 +4,7 @@
       "id": "10000000-0000-4000-8000-000000000001",
       "name": "RS Simulasi Siaga 01",
       "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-      "city_code": "31.71",
+      "city_code": "3171",
       "city_name": "Jakarta Selatan",
       "province_code": "31",
       "province_name": "DKI Jakarta",
@@ -68,6 +68,13 @@
         },
         "last_source_updated_at": "2026-10-23T08:00:00Z",
         "data_origin": "simulation"
+      },
+      "data_quality": {
+        "score": 49,
+        "label": "terbatas",
+        "completeness": 0.23,
+        "freshness": "fresh",
+        "primary_origin": "simulation"
       }
     },
     "meta": {
@@ -80,7 +87,7 @@
         "id": "10000000-0000-4000-8000-000000000001",
         "name": "RS Simulasi Siaga 01",
         "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-        "city_code": "31.71",
+        "city_code": "3171",
         "city_name": "Jakarta Selatan",
         "province_code": "31",
         "province_name": "DKI Jakarta",
@@ -144,6 +151,13 @@
           },
           "last_source_updated_at": "2026-10-23T08:00:00Z",
           "data_origin": "simulation"
+        },
+        "data_quality": {
+          "score": 49,
+          "label": "terbatas",
+          "completeness": 0.23,
+          "freshness": "fresh",
+          "primary_origin": "simulation"
         }
       }
     ],
@@ -165,7 +179,7 @@
         "id": "10000000-0000-4000-8000-000000000001",
         "name": "RS Simulasi Siaga 01",
         "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-        "city_code": "31.71",
+        "city_code": "3171",
         "city_name": "Jakarta Selatan",
         "province_code": "31",
         "province_name": "DKI Jakarta",
@@ -229,6 +243,13 @@
           },
           "last_source_updated_at": "2026-10-23T08:00:00Z",
           "data_origin": "simulation"
+        },
+        "data_quality": {
+          "score": 49,
+          "label": "terbatas",
+          "completeness": 0.23,
+          "freshness": "fresh",
+          "primary_origin": "simulation"
         }
       },
       "updated_at": "2026-10-23T08:00:00Z",
@@ -305,7 +326,7 @@
         "id": "10000000-0000-4000-8000-000000000001",
         "name": "RS Simulasi Siaga 01",
         "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
-        "city_code": "31.71",
+        "city_code": "3171",
         "city_name": "Jakarta Selatan",
         "province_code": "31",
         "province_name": "DKI Jakarta",
@@ -383,5 +404,380 @@
       "message": "Rumah sakit tidak ditemukan: 30000000-0000-4000-8000-000000000999"
     },
     "request_id": "request-id-example"
+  },
+  "bpjs_found": {
+    "data": {
+      "result": "found",
+      "participant": {
+        "nik_masked": "9999********0001",
+        "name_masked": "BU** SA*****",
+        "status": "active",
+        "inactive_reason": null,
+        "membership_type": {
+          "code": "PBPU",
+          "name": "Pekerja Bukan Penerima Upah"
+        },
+        "care_class": "3",
+        "primary_facility": {
+          "code": "SIM-FKTP-001",
+          "name": "Puskesmas Simulasi Kebayoran"
+        }
+      },
+      "data_origin": "simulation",
+      "checked_at": "2026-10-25T08:00:00Z"
+    }
+  },
+  "bpjs_not_found": {
+    "data": {
+      "result": "not_found",
+      "participant": null,
+      "data_origin": "simulation",
+      "checked_at": "2026-10-25T08:00:00Z"
+    }
+  },
+  "admin_referrals": {
+    "data": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "owner_hospital_id": "10000000-0000-4000-8000-000000000001",
+        "destination_hospital_id": "10000000-0000-4000-8000-000000000002",
+        "status": "searching",
+        "public_note": "Pencarian tujuan dalam skenario simulasi",
+        "next_step": "Menunggu konfirmasi simulasi",
+        "version": 1,
+        "is_demo": true,
+        "updated_at": "2026-10-23T08:00:00Z",
+        "hospital_name": "RS Simulasi Siaga 01"
+      }
+    ]
+  },
+  "login_without_csrf": {
+    "data": {
+      "expires_at": "2026-10-26T16:00:00Z"
+    }
+  },
+  "validation_error": {
+    "error": {
+      "code": "validation_error",
+      "message": "Kode wilayah tidak dikenal",
+      "details": [
+        {
+          "field": "city_code",
+          "issue": "unknown_value"
+        }
+      ]
+    },
+    "request_id": "request-id-example"
+  },
+  "recommendations": {
+    "data": [
+      {
+        "hospital": {
+          "id": "10000000-0000-4000-8000-0000000000a1",
+          "name": "RS Contoh Kurasi Bekasi",
+          "address": "Alamat contoh untuk dokumentasi",
+          "city_name": "Kota Bekasi",
+          "province_name": "Jawa Barat",
+          "phone": "021-0000-0001",
+          "lat": -6.180940739241873,
+          "lng": 106.9896,
+          "bpjs": true,
+          "data_origin": "satusehat_sandbox",
+          "facility_summary": {
+            "icu": "available",
+            "nicu": "available",
+            "picu": "available",
+            "rawat_inap": "available",
+            "bpjs": true,
+            "data_origin": "curated",
+            "inpatient_beds": {
+              "total": 120,
+              "available": 14,
+              "freshness": "aging"
+            },
+            "last_source_updated_at": "2026-10-29T23:00:00Z"
+          },
+          "data_quality": {
+            "score": 93,
+            "label": "baik",
+            "completeness": 1,
+            "freshness": "aging",
+            "primary_origin": "curated"
+          }
+        },
+        "score": 93,
+        "level": "high",
+        "distance_km": 5.999996041794544,
+        "components": [
+          {
+            "key": "service_match",
+            "label": "Layanan yang dibutuhkan",
+            "weight": 0.4,
+            "value": 1,
+            "contribution": 40,
+            "reason": "NICU tersedia (kurasi, 30 Okt 2026)"
+          },
+          {
+            "key": "bed_availability",
+            "label": "Ketersediaan tempat tidur",
+            "weight": 0.2,
+            "value": 1,
+            "contribution": 20,
+            "reason": "Bed NICU: 2 tersedia (kurasi, 30 Okt 2026)"
+          },
+          {
+            "key": "distance",
+            "label": "Jarak",
+            "weight": 0.2,
+            "value": 0.7,
+            "contribution": 14,
+            "reason": "6,0 km garis lurus dari lokasi Anda (radius 20,0 km); bukan waktu tempuh"
+          },
+          {
+            "key": "bpjs",
+            "label": "Menerima BPJS",
+            "weight": 0.1,
+            "value": 1,
+            "contribution": 10,
+            "reason": "Menerima pasien BPJS (kurasi, 30 Okt 2026)"
+          },
+          {
+            "key": "data_confidence",
+            "label": "Keyakinan data",
+            "weight": 0.1,
+            "value": 0.93,
+            "contribution": 9,
+            "reason": "Kualitas data baik (93/100)"
+          }
+        ],
+        "unknowns": [],
+        "flags": []
+      },
+      {
+        "hospital": {
+          "id": "10000000-0000-4000-8000-0000000000a2",
+          "name": "RS Simulasi Siaga 05",
+          "address": "Alamat sintetis untuk pengujian, bukan fasilitas nyata",
+          "city_name": "Kota Bekasi",
+          "province_name": "Jawa Barat",
+          "phone": null,
+          "lat": -6.198927159494581,
+          "lng": 106.9896,
+          "bpjs": true,
+          "data_origin": "simulation",
+          "facility_summary": {
+            "icu": "available",
+            "nicu": "available",
+            "picu": "available",
+            "rawat_inap": "available",
+            "bpjs": true,
+            "data_origin": "simulation",
+            "inpatient_beds": {
+              "total": 120,
+              "available": 14,
+              "freshness": "fresh"
+            },
+            "last_source_updated_at": "2026-10-30T01:40:00Z"
+          },
+          "data_quality": {
+            "score": 84,
+            "label": "baik",
+            "completeness": 0.92,
+            "freshness": "fresh",
+            "primary_origin": "simulation"
+          }
+        },
+        "score": 82,
+        "level": "high",
+        "distance_km": 3.999997361196395,
+        "components": [
+          {
+            "key": "service_match",
+            "label": "Layanan yang dibutuhkan",
+            "weight": 0.4,
+            "value": 1,
+            "contribution": 32,
+            "reason": "NICU tersedia (simulasi, 30 Okt 2026)"
+          },
+          {
+            "key": "bed_availability",
+            "label": "Ketersediaan tempat tidur",
+            "weight": 0.2,
+            "value": 1,
+            "contribution": 16,
+            "reason": "Bed NICU: 3 tersedia (simulasi, 30 Okt 2026)"
+          },
+          {
+            "key": "distance",
+            "label": "Jarak",
+            "weight": 0.2,
+            "value": 0.8,
+            "contribution": 16,
+            "reason": "4,0 km garis lurus dari lokasi Anda (radius 20,0 km); bukan waktu tempuh"
+          },
+          {
+            "key": "bpjs",
+            "label": "Menerima BPJS",
+            "weight": 0.1,
+            "value": 1,
+            "contribution": 10,
+            "reason": "Menerima pasien BPJS (simulasi)"
+          },
+          {
+            "key": "data_confidence",
+            "label": "Keyakinan data",
+            "weight": 0.1,
+            "value": 0.84,
+            "contribution": 8,
+            "reason": "Kualitas data baik (84/100)"
+          }
+        ],
+        "unknowns": [],
+        "flags": [
+          "contains_simulated_data"
+        ]
+      },
+      {
+        "hospital": {
+          "id": "10000000-0000-4000-8000-0000000000a3",
+          "name": "RS Contoh Data Terbatas",
+          "address": "Alamat contoh untuk dokumentasi",
+          "city_name": "Kota Bekasi",
+          "province_name": "Jawa Barat",
+          "phone": null,
+          "lat": -6.153961108862808,
+          "lng": 106.9896,
+          "bpjs": null,
+          "data_origin": "satusehat_sandbox",
+          "facility_summary": {
+            "icu": "unknown",
+            "nicu": "unknown",
+            "picu": "unknown",
+            "rawat_inap": "unknown",
+            "bpjs": null,
+            "data_origin": null,
+            "inpatient_beds": {
+              "total": null,
+              "available": null,
+              "freshness": "unknown"
+            },
+            "last_source_updated_at": "2026-10-30T01:40:00Z"
+          },
+          "data_quality": {
+            "score": 41,
+            "label": "terbatas",
+            "completeness": 0.08,
+            "freshness": "fresh",
+            "primary_origin": "simulation"
+          }
+        },
+        "score": 32,
+        "level": "low",
+        "distance_km": 8.999994062691915,
+        "components": [
+          {
+            "key": "service_match",
+            "label": "Layanan yang dibutuhkan",
+            "weight": 0.4,
+            "value": 0.2,
+            "contribution": 8,
+            "reason": "NICU belum diketahui"
+          },
+          {
+            "key": "bed_availability",
+            "label": "Ketersediaan tempat tidur",
+            "weight": 0.2,
+            "value": 0.3,
+            "contribution": 6,
+            "reason": "Bed NICU: jumlah belum diketahui"
+          },
+          {
+            "key": "distance",
+            "label": "Jarak",
+            "weight": 0.2,
+            "value": 0.55,
+            "contribution": 11,
+            "reason": "9,0 km garis lurus dari lokasi Anda (radius 20,0 km); bukan waktu tempuh"
+          },
+          {
+            "key": "bpjs",
+            "label": "Menerima BPJS",
+            "weight": 0.1,
+            "value": 0.3,
+            "contribution": 3,
+            "reason": "Status kerja sama BPJS belum diketahui"
+          },
+          {
+            "key": "data_confidence",
+            "label": "Keyakinan data",
+            "weight": 0.1,
+            "value": 0.41,
+            "contribution": 4,
+            "reason": "Kualitas data terbatas (41/100)"
+          }
+        ],
+        "unknowns": [
+          "service_nicu",
+          "bed_nicu",
+          "bpjs"
+        ],
+        "flags": []
+      }
+    ],
+    "meta": {
+      "algorithm_version": "1",
+      "candidates_truncated": false,
+      "dataset": "all",
+      "excluded": {
+        "service_unavailable": 1
+      },
+      "generated_at": "2026-10-30T02:00:00Z",
+      "radius_km": 20,
+      "total_considered": 4,
+      "weights": {
+        "bed_availability": 0.2,
+        "bpjs": 0.1,
+        "data_confidence": 0.1,
+        "distance": 0.2,
+        "service_match": 0.4
+      }
+    }
+  },
+  "markers": {
+    "data": [
+      {
+        "id": "10000000-0000-4000-8000-0000000000a1",
+        "name": "RS Contoh Kurasi Bekasi",
+        "lat": -6.180940739241873,
+        "lng": 106.9896,
+        "match": "all",
+        "data_quality_label": "baik",
+        "has_simulated_data": false
+      },
+      {
+        "id": "10000000-0000-4000-8000-0000000000a2",
+        "name": "RS Simulasi Siaga 05",
+        "lat": -6.198927159494581,
+        "lng": 106.9896,
+        "match": "all",
+        "data_quality_label": "baik",
+        "has_simulated_data": true
+      },
+      {
+        "id": "10000000-0000-4000-8000-0000000000a3",
+        "name": "RS Contoh Data Terbatas",
+        "lat": -6.153961108862808,
+        "lng": 106.9896,
+        "match": "none",
+        "data_quality_label": "terbatas",
+        "has_simulated_data": true
+      }
+    ],
+    "meta": {
+      "as_of": "2026-10-30T02:00:00Z",
+      "count": 3,
+      "dataset": "all",
+      "truncated": false
+    }
   }
 }

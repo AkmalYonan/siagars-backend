@@ -1,0 +1,14 @@
+{"commands": [
+ {"create": "bpjs_participants", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "name", "birth_date", "status"], "properties": {
+  "_id": {"bsonType": "string", "pattern": "^[0-9]{16}$"}, "name": {"bsonType": "string"}, "birth_date": {"bsonType": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+  "status": {"enum": ["active", "inactive"]}, "inactive_reason": {"bsonType": ["string", "null"]},
+  "membership_code": {"bsonType": ["string", "null"]}, "membership_name": {"bsonType": ["string", "null"]},
+  "care_class": {"enum": ["1", "2", "3", null]}, "facility_code": {"bsonType": ["string", "null"]}, "facility_name": {"bsonType": ["string", "null"]}}}}},
+ {"create": "bpjs_check_history", "validator": {"$jsonSchema": {"bsonType": "object", "required": ["_id", "nik_masked", "name_masked", "birth_year", "result", "created_at"], "properties": {
+  "_id": {"bsonType": "string"}, "nik_masked": {"bsonType": "string"}, "name_masked": {"bsonType": "string"}, "birth_year": {"bsonType": "int"},
+  "result": {"enum": ["found", "not_found"]}, "status": {"enum": ["active", "inactive", null]}, "nik_hmac": {"bsonType": "string"}, "raw_enc": {"bsonType": "binData"},
+  "created_at": {"bsonType": "date"}}}}},
+ {"createIndexes": "bpjs_check_history", "indexes": [
+  {"key": {"created_at": 1}, "name": "bpjs_history_ttl_idx", "expireAfterSeconds": 2592000},
+  {"key": {"nik_hmac": 1}, "name": "bpjs_history_nik_hmac_idx", "partialFilterExpression": {"nik_hmac": {"$type": "string"}}}]}
+]}
