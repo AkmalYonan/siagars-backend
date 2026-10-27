@@ -2,6 +2,24 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## 0.5.0 (27 Okt 2026) - Insights & Data (BE-20, BE-22; BE-23 sudah terpenuhi)
+
+Contoh respons: [`fixtures.json`](fixtures.json) (`insights_summary`, `insights_coverage`, `insights_service_gaps`, `insights_freshness`).
+
+### Baru
+| Endpoint | Fungsi |
+|---|---|
+| `GET /insights/summary` | `hospital_count, city_count, curated_count, simulated_facility_count, fresh_ratio, with_known_bpjs_ratio`. Rasio `null` bila tidak ada RS pada filter. |
+| `GET /insights/coverage` | Per kota: jumlah RS, `by_class` (A/B/C/D/unknown), `curated_count`. |
+| `GET /insights/service-gaps?service=<slug>` | Per kota: `available/limited/unavailable/unknown` dan `gap = available+limited == 0`. `service` wajib dan harus slug dikenal. RS tanpa entri layanan dihitung `unknown`, bukan `unavailable`. |
+| `GET /insights/freshness` | Per `data_origin`: `fresh/aging/stale/unknown` (kesegaran level RS dari `source_updated_at`). |
+
+Semua menerima `province_code` (kode dikenal, selain itu 422) dan `dataset` (`real` default, `simulation`, `all`). Parameter tak dikenal/kosong/berulang: 422. Respons sukses: `Cache-Control: public, max-age=300` (satu-satunya endpoint yang tidak `no-store`), cache server 5 menit, `meta.generated_at`, `meta.sources`, `meta.dataset`, `meta.province_code`. Galat tetap `no-store`. **Catatan UI wajib:** `gap` berarti *tidak ada RS dengan layanan itu yang tercatat tersedia di data kami*, bukan klaim faktual tentang wilayah.
+
+### Perubahan non-kontrak
+- `manage curate <file> --apply` menulis satu entri `audit_logs` (`action=curate.apply`, aktor `system:curate`, entitas nama file, hanya hitungan: updated/unchanged/failed/services/beds). Refresh simulasi sudah mengaudit sejak 0.3.1 (`job.refresh_simulation`).
+- `GET /admin/bpjs-checks` sudah hanya memuat field tersamar dengan paginasi `page/limit` (sejak 0.3.1, D-03); tidak ada perubahan.
+
 ## 0.4.0 (draf X-01, 26 Okt 2026) - Decision Core (BE-10, BE-11, BE-12)
 
 Draf kontrak untuk dibekukan di X-01 (review FE, approve PM). Contoh respons lengkap ada di [`fixtures.json`](fixtures.json) (`recommendations`, `markers`, `hospital_detail.data.data_quality`) sehingga FE bisa membangun `/pilih-rs` sebelum endpoint live.

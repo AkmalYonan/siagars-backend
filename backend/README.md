@@ -1,4 +1,4 @@
-# SiagaRS Backend (API 0.4.0, draf X-01)
+# SiagaRS Backend (API 0.5.0)
 
 Backend Go untuk SiagaRS — sistem pendukung keputusan pemilihan rumah sakit (sub-tema Data-Driven Decision Support): direktori RS, provenance, tracking rujukan sintetis, cek BPJS simulasi, dan operator. Versi API = `info.version` di [kontrak OpenAPI](docs/openapi.yaml); riwayat di [CHANGELOG](docs/CHANGELOG.md).
 
@@ -268,3 +268,7 @@ Data simulasi menjadi `stale` 24 jam setelah ditulis. Job harian menjalankan log
 - Manual / GitHub Actions: `curl -X POST -H "X-Job-Secret: $JOB_SECRET" https://<host>/api/v1/internal/jobs/refresh-simulation`.
 - Lokal: `go run ./cmd/manage refresh-simulation`.
 - Tanpa `JOB_SECRET` endpoint selalu 401. Endpoint ini internal dan tidak ada di OpenAPI publik.
+
+## Insights (0.5.0)
+
+`GET /api/v1/insights/{summary,coverage,service-gaps,freshness}` memberi agregat publik (filter `province_code`, `dataset`; `service-gaps` butuh `service=<slug>`). Respons di-cache 5 menit (`Cache-Control: public, max-age=300`). `gap=true` berarti tidak ada RS dengan layanan itu yang tercatat tersedia di data kami, bukan klaim faktual tentang wilayah. `curate --apply` kini menulis audit log `curate.apply`.

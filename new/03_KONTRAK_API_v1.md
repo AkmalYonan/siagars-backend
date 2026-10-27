@@ -165,6 +165,8 @@ Semua mendukung `province_code` opsional dan `dataset` (default `real`). Respons
 | `GET /insights/service-gaps?service=nicu` | `[{ city_code, city_name, available, limited, unavailable, unknown, gap: bool }]` — `gap = available+limited == 0` |
 | `GET /insights/freshness` | `[{ data_origin, fresh, aging, stale, unknown }]` |
 
+Detail implementasi (BE-20, perlu konfirmasi FE/PM): `city_count` = kota berbeda di RS terfilter; `simulated_facility_count` = item layanan + bed ber-origin simulation; `fresh_ratio` dari kesegaran level RS; `with_known_bpjs_ratio` = porsi `bpjs != null`; rasio `null` bila tidak ada RS; kelas dari `facility_class.code` (A–D, lainnya `unknown`); `service` wajib di service-gaps (422 bila tidak dikenal); RS tanpa entri layanan dihitung `unknown`; `meta` memuat juga `dataset` dan `province_code`; galat tetap `no-store`.
+
 Catatan wajib di UI: gap berarti **"tidak ada RS dengan layanan tersebut yang tercatat tersedia di data kami"**, bukan klaim faktual tentang wilayah.
 
 ## 7. Markers peta (v0.4.0)

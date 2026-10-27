@@ -122,3 +122,27 @@ func tally(added, kept []string, v string, wasAdded bool) ([]string, []string) {
 	}
 	return added, append(kept, v)
 }
+
+// AuditCounts summarises outcomes for the audit log (BE-22): updated = hospitals that received at least
+// one value, unchanged = hospitals found where everything already existed, failed = records not found,
+// with a name mismatch or with a service slug missing from the master; services/beds = items added.
+// A record can be both updated and failed (some items written, one slug missing).
+func AuditCounts(outcomes []CurateOutcome) map[string]int {
+	c := map[string]int{"updated": 0, "unchanged": 0, "failed": 0, "services": 0, "beds": 0}
+	for _, o := range outcomes {
+		c["services"] += len(o.ServicesAdded)
+		c["beds"] += len(o.BedsAdded)
+		if !o.Found || o.NameMismatch || len(o.Missing) > 0 {
+			c["failed"]++
+		}
+		if !o.Found || o.NameMismatch {
+			continue
+		}
+		if o.BPJSSet || len(o.ServicesAdded) > 0 || len(o.BedsAdded) > 0 {
+			c["updated"]++
+		} else {
+			c["unchanged"]++
+		}
+	}
+	return c
+}
