@@ -779,5 +779,121 @@
       "dataset": "all",
       "truncated": false
     }
+  },
+  "insights_summary": {
+    "data": {
+      "hospital_count": 34,
+      "city_count": 5,
+      "curated_count": 30,
+      "simulated_facility_count": 0,
+      "fresh_ratio": 0.12,
+      "with_known_bpjs_ratio": 0.88
+    },
+    "meta": {
+      "generated_at": "2026-10-27T03:00:00Z",
+      "sources": [
+        "curated",
+        "satusehat"
+      ],
+      "dataset": "real",
+      "province_code": null
+    }
+  },
+  "insights_coverage": {
+    "data": [
+      {
+        "city_code": "3171",
+        "city_name": "Jakarta Selatan",
+        "hospital_count": 9,
+        "by_class": {
+          "A": 2,
+          "B": 4,
+          "C": 2,
+          "D": 0,
+          "unknown": 1
+        },
+        "curated_count": 8
+      },
+      {
+        "city_code": "3275",
+        "city_name": "Bekasi",
+        "hospital_count": 6,
+        "by_class": {
+          "A": 0,
+          "B": 3,
+          "C": 2,
+          "D": 0,
+          "unknown": 1
+        },
+        "curated_count": 5
+      }
+    ],
+    "meta": {
+      "generated_at": "2026-10-27T03:00:00Z",
+      "sources": [
+        "curated",
+        "satusehat"
+      ],
+      "dataset": "real",
+      "province_code": null
+    }
+  },
+  "insights_service_gaps": {
+    "data": [
+      {
+        "city_code": "3171",
+        "city_name": "Jakarta Selatan",
+        "available": 4,
+        "limited": 1,
+        "unavailable": 2,
+        "unknown": 2,
+        "gap": false
+      },
+      {
+        "city_code": "3275",
+        "city_name": "Bekasi",
+        "available": 0,
+        "limited": 0,
+        "unavailable": 2,
+        "unknown": 4,
+        "gap": true
+      }
+    ],
+    "meta": {
+      "generated_at": "2026-10-27T03:00:00Z",
+      "sources": [
+        "curated",
+        "satusehat"
+      ],
+      "dataset": "real",
+      "province_code": null
+    }
+  },
+  "insights_freshness": {
+    "data": [
+      {
+        "data_origin": "curated",
+        "fresh": 2,
+        "aging": 3,
+        "stale": 25,
+        "unknown": 0
+      },
+      {
+        "data_origin": "satusehat",
+        "fresh": 0,
+        "aging": 0,
+        "stale": 1,
+        "unknown": 3
+      }
+    ],
+    "meta": {
+      "generated_at": "2026-10-27T03:00:00Z",
+      "sources": [
+        "curated",
+        "satusehat"
+      ],
+      "dataset": "real",
+      "province_code": null
+    }
   }
 }

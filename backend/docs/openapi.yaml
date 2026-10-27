@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "SiagaRS Backend",
-    "version": "0.4.0",
-    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Versi 0.4.0 (draf X-01, 26 Okt 2026): Decision Core\n- **Baru:** `GET /recommendations` — rekomendasi RS ber-skor 0–100 yang dapat dijelaskan (5 komponen, renormalisasi bobot, penalti simulasi 0,8, `meta.excluded`, `algorithm_version`). Lihat `new/03_KONTRAK_API_v1.md` §4.\n- **Baru:** `GET /hospitals/markers?bbox=` — marker ringan (maks 500) untuk peta seluruh viewport.\n- **Baru (aditif):** `data_quality` pada setiap Hospital (daftar, detail, compare, tujuan lookup, admin) — skor kualitas **data**, bukan kualitas klinis RS.\n- Skor rekomendasi bukan saran medis; jarak = garis lurus (Haversine), bukan waktu tempuh. Darurat: 112.\n- Total 23 operasi.\n\n## Versi 0.3.1 (26 Okt 2026): stabilisasi\n- **Dihapus (keputusan D-03):** `POST /admin/bpjs-checks/{id}/reveal` (kini 404). Riwayat cek BPJS hanya menyimpan nilai tersamar + sidik HMAC NIK; NIK/nama asli tidak disimpan dalam bentuk apa pun.\n- **Kode wilayah** memakai format Kemendagri tanpa titik (`31`, `3171`); kode bertitik lama (`31.71`) kini 422.\n- **Kontrak:** `bpjs_data_origin` & `facility_summary.data_origin` = `DataOrigin | null`; `csrf_token` pada login **opsional** (pakai `GET /auth/csrf` bila tidak ada); skema `Error` seragam dengan `details` opsional.\n- **Admin:** `GET /admin/referrals` menyertakan `hospital_name` (nama RS pemilik).\n- Total 21 operasi publik/operator. Rincian: `docs/CHANGELOG.md`.\n\n## Versi 0.3.0 (25 Okt 2026): cek BPJS simulasi + riwayat operator\n- **Baru:** `POST /bpjs/check` (publik, SIMULASI dengan peserta sintetis, bukan BPJS Kesehatan), `GET /admin/bpjs-checks` (riwayat tersamar). Endpoint reveal yang sempat ada di 0.3.0 dihapus di 0.3.1.\n- Riwayat cek BPJS disimpan tersamar, dihapus otomatis setelah 30 hari. Tampilkan pemberitahuan ini kepada pengguna.\n- Perubahan aditif; field dan endpoint lama tidak berubah.\n\n## Versi 0.2.1 (25 Okt 2026): data contoh fasilitas untuk RS nyata\n- RS nyata (SATUSEHAT) di staging kini punya **data contoh** ICU/NICU/PICU/IGD/ambulans/rawat inap, bed, dan BPJS agar UI bisa dibangun. Semuanya **simulasi, bukan fakta RS**: item berlabel `data_origin: \"simulation\"`, tanpa `source_url`, tidak pernah `verified_at`. `data_origin` RS tetap `satusehat_sandbox`.\n- Field baru: `bpjs_data_origin` (pada Hospital) dan `facility_summary.data_origin`. Keduanya aditif. FE **wajib** memberi label \"Simulasi\" bila nilainya `simulation`.\n- Data kurasi bersumber nanti menggantikan data contoh tanpa mengubah bentuk respons.\n\n## Versi 0.2.0 (25 Okt 2026): apa yang berubah\n- **Baru:** `GET /regions`, `GET /hospitals/suggest`, `GET /admin/hospitals`, `GET /admin/hospitals/{id}` (total 19 operasi).\n- **Hospital** punya field baru: `external_id`, `source_namespace`, `facility_class`, `facility_subtype`, `operational`, `bpjs_source_url`, `bpjs_source_updated_at`, `facility_summary`. Semua aditif; field lama tidak berubah.\n- **Compare/detail** menerima UUID **atau** kode SATUSEHAT (`external_id`).\n- **Layanan baru** `rawat-inap` (bed rawat inap = kategori `general`).\n- **Data RS nyata** (SATUSEHAT) belum punya ICU/NICU/PICU/bed/BPJS: nilainya `unknown`/`null`, bukan 0/false.\n- Rincian lengkap dan catatan migrasi FE: `docs/CHANGELOG.md`.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
+    "version": "0.5.0",
+    "description": "API pencarian rumah sakit, provenance data, tracking rujukan **sintetis**, dan operasi operator. Seluruh data pada V0.1 adalah data demo/simulasi atau sandbox: tidak ada data pasien nyata.\n\n## Versi 0.5.0 (BE-20, 27 Okt 2026): Insights\n- **Baru:** `GET /insights/summary|coverage|service-gaps|freshness` — agregat publik per wilayah/dataset, cache 5 menit (`Cache-Control: public, max-age=300`), `meta.generated_at` dan `meta.sources`. `gap=true` berarti *tidak ada RS yang tercatat menyediakan layanan itu di data kami*, bukan klaim faktual tentang wilayah. Lihat `new/03_KONTRAK_API_v1.md` §6.\n\n## Versi 0.4.0 (draf X-01, 26 Okt 2026): Decision Core\n- **Baru:** `GET /recommendations` — rekomendasi RS ber-skor 0–100 yang dapat dijelaskan (5 komponen, renormalisasi bobot, penalti simulasi 0,8, `meta.excluded`, `algorithm_version`). Lihat `new/03_KONTRAK_API_v1.md` §4.\n- **Baru:** `GET /hospitals/markers?bbox=` — marker ringan (maks 500) untuk peta seluruh viewport.\n- **Baru (aditif):** `data_quality` pada setiap Hospital (daftar, detail, compare, tujuan lookup, admin) — skor kualitas **data**, bukan kualitas klinis RS.\n- Skor rekomendasi bukan saran medis; jarak = garis lurus (Haversine), bukan waktu tempuh. Darurat: 112.\n- Total 23 operasi.\n\n## Versi 0.3.1 (26 Okt 2026): stabilisasi\n- **Dihapus (keputusan D-03):** `POST /admin/bpjs-checks/{id}/reveal` (kini 404). Riwayat cek BPJS hanya menyimpan nilai tersamar + sidik HMAC NIK; NIK/nama asli tidak disimpan dalam bentuk apa pun.\n- **Kode wilayah** memakai format Kemendagri tanpa titik (`31`, `3171`); kode bertitik lama (`31.71`) kini 422.\n- **Kontrak:** `bpjs_data_origin` & `facility_summary.data_origin` = `DataOrigin | null`; `csrf_token` pada login **opsional** (pakai `GET /auth/csrf` bila tidak ada); skema `Error` seragam dengan `details` opsional.\n- **Admin:** `GET /admin/referrals` menyertakan `hospital_name` (nama RS pemilik).\n- Total 21 operasi publik/operator. Rincian: `docs/CHANGELOG.md`.\n\n## Versi 0.3.0 (25 Okt 2026): cek BPJS simulasi + riwayat operator\n- **Baru:** `POST /bpjs/check` (publik, SIMULASI dengan peserta sintetis, bukan BPJS Kesehatan), `GET /admin/bpjs-checks` (riwayat tersamar). Endpoint reveal yang sempat ada di 0.3.0 dihapus di 0.3.1.\n- Riwayat cek BPJS disimpan tersamar, dihapus otomatis setelah 30 hari. Tampilkan pemberitahuan ini kepada pengguna.\n- Perubahan aditif; field dan endpoint lama tidak berubah.\n\n## Versi 0.2.1 (25 Okt 2026): data contoh fasilitas untuk RS nyata\n- RS nyata (SATUSEHAT) di staging kini punya **data contoh** ICU/NICU/PICU/IGD/ambulans/rawat inap, bed, dan BPJS agar UI bisa dibangun. Semuanya **simulasi, bukan fakta RS**: item berlabel `data_origin: \"simulation\"`, tanpa `source_url`, tidak pernah `verified_at`. `data_origin` RS tetap `satusehat_sandbox`.\n- Field baru: `bpjs_data_origin` (pada Hospital) dan `facility_summary.data_origin`. Keduanya aditif. FE **wajib** memberi label \"Simulasi\" bila nilainya `simulation`.\n- Data kurasi bersumber nanti menggantikan data contoh tanpa mengubah bentuk respons.\n\n## Versi 0.2.0 (25 Okt 2026): apa yang berubah\n- **Baru:** `GET /regions`, `GET /hospitals/suggest`, `GET /admin/hospitals`, `GET /admin/hospitals/{id}` (total 19 operasi).\n- **Hospital** punya field baru: `external_id`, `source_namespace`, `facility_class`, `facility_subtype`, `operational`, `bpjs_source_url`, `bpjs_source_updated_at`, `facility_summary`. Semua aditif; field lama tidak berubah.\n- **Compare/detail** menerima UUID **atau** kode SATUSEHAT (`external_id`).\n- **Layanan baru** `rawat-inap` (bed rawat inap = kategori `general`).\n- **Data RS nyata** (SATUSEHAT) belum punya ICU/NICU/PICU/bed/BPJS: nilainya `unknown`/`null`, bukan 0/false.\n- Rincian lengkap dan catatan migrasi FE: `docs/CHANGELOG.md`.\n\n## Mulai cepat\n- **Publik** (tanpa login): `GET /health`, `GET /services`, `GET /hospitals`, `GET /hospitals/{id}`, `GET /hospitals/compare`, `POST /referrals/lookup`.\n- **Operator**: `POST /auth/login` -> cookie sesi `siagars_session` (HttpOnly) -> `GET /auth/csrf` -> kirim header `X-CSRF-Token` + `Origin` pada setiap mutasi (`POST`/`PATCH`).\n- Prefix `/api/v1`, JSON snake_case, UUID lowercase, waktu RFC3339 UTC. Tombol **Test Request** memakai server yang sedang menyajikan halaman ini.\n\n## Aturan teknis\nBaseline 23 Oktober 2026. Semua path relatif /api/v1. UUID lowercase, RFC3339 UTC, JSON snake_case. Parameter query hospitals yang tidak dikenal, kosong atau berulang menghasilkan 422. Service filter AND status available/limited. Body unknown field menghasilkan 400. Body 64 KB. Layanan/bed mempertahankan provenance field-level; freshness dihitung dari source_updated_at: <1 jam fresh, 1..24 jam aging, >24 jam stale, null/future unknown. Simulasi tidak membuktikan layanan nyata. Semua response no-store. Login: 5 gagal/15 menit/IP+akun, ceiling 100 request/15 menit/IP; lookup 10/menit/IP. X-Forwarded-For hanya dipercaya untuk rate limit bila peer langsung termasuk proxy terdaftar (env TRUSTED_PROXIES, default kosong = tidak dipercaya). Parameter q mencocokkan substring tanpa pembedaan huruf pada \"nama kota provinsi\" (pelipatan huruf hanya untuk ASCII); filter, urutan nama dan paginasi dijalankan di database tanpa mengubah hasil. State machine submitted->verified->searching->confirmed->completed; verified/searching->rejected; confirmed->searching perlu alasan. Terminal completed/rejected. Data SATUSEHAT MSI Sandbox bersifat opsional (diimpor manual oleh backend, bukan proxy): data_origin satusehat_sandbox, source_updated_at/verified_at null sehingga freshness unknown, bpjs null, services/beds array kosong; fasilitas yang eksplisit nonaktif di sumber tidak ditampilkan. List saat ini memberi DTO Hospital lengkap; map memakai halaman yang sama. Daftar /hospitals memakai dataset=real secara default sehingga data simulasi tidak bercampur; detail RS dan lookup rujukan demo tetap dapat memuat RS simulasi."
   },
   "servers": [
     {
@@ -5401,6 +5401,533 @@
           }
         }
       }
+    },
+    "/insights/summary": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Ringkasan cakupan data",
+        "description": "Agregat dari data yang tersimpan; dihitung di server dan di-cache 5 menit. Parameter tak dikenal, kosong atau berulang: 422.",
+        "operationId": "get_insights_summary",
+        "parameters": [
+          {
+            "name": "province_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "31"
+            },
+            "description": "Kode provinsi dari /regions; tak dikenal: 422."
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=300"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InsightSummary"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/InsightMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "bbox hilang/tidak valid/terlalu luas, services tidak dikenal, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "bbox maksimal 2° × 2°; perbesar zoom peta"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/coverage": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Cakupan RS per kota dan kelas",
+        "description": "Agregat dari data yang tersimpan; dihitung di server dan di-cache 5 menit. Parameter tak dikenal, kosong atau berulang: 422.",
+        "operationId": "get_insights_coverage",
+        "parameters": [
+          {
+            "name": "province_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "31"
+            },
+            "description": "Kode provinsi dari /regions; tak dikenal: 422."
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=300"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InsightCoverage"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/InsightMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "bbox hilang/tidak valid/terlalu luas, services tidak dikenal, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "bbox maksimal 2° × 2°; perbesar zoom peta"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/service-gaps": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Kesenjangan satu layanan per kota",
+        "description": "Agregat dari data yang tersimpan; dihitung di server dan di-cache 5 menit. Parameter tak dikenal, kosong atau berulang: 422. `service` wajib.",
+        "operationId": "get_insights_service_gaps",
+        "parameters": [
+          {
+            "name": "service",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "nicu"
+            },
+            "description": "Slug layanan dari /services; tak dikenal: 422."
+          },
+          {
+            "name": "province_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "31"
+            },
+            "description": "Kode provinsi dari /regions; tak dikenal: 422."
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=300"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InsightServiceGap"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/InsightMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "bbox hilang/tidak valid/terlalu luas, services tidak dikenal, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "bbox maksimal 2° × 2°; perbesar zoom peta"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/freshness": {
+      "get": {
+        "tags": [
+          "Publik"
+        ],
+        "summary": "Kesegaran data per asal data",
+        "description": "Agregat dari data yang tersimpan; dihitung di server dan di-cache 5 menit. Parameter tak dikenal, kosong atau berulang: 422.",
+        "operationId": "get_insights_freshness",
+        "parameters": [
+          {
+            "name": "province_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "31"
+            },
+            "description": "Kode provinsi dari /regions; tak dikenal: 422."
+          },
+          {
+            "name": "dataset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "real",
+                "simulation",
+                "all"
+              ],
+              "default": "real"
+            },
+            "description": "Sama seperti GET /hospitals."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=300"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InsightFreshness"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/InsightMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "bbox hilang/tidak valid/terlalu luas, services tidak dikenal, atau parameter lain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "bbox maksimal 2° × 2°; perbesar zoom peta"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6988,6 +7515,220 @@
           "has_simulated_data"
         ],
         "additionalProperties": false
+      },
+      "InsightSummary": {
+        "type": "object",
+        "required": [
+          "hospital_count",
+          "city_count",
+          "curated_count",
+          "simulated_facility_count",
+          "fresh_ratio",
+          "with_known_bpjs_ratio"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "hospital_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "city_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curated_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "simulated_facility_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Jumlah layanan + kategori bed bertanda data_origin=simulation."
+          },
+          "fresh_ratio": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "null bila tidak ada RS pada filter (penyebut 0)."
+          },
+          "with_known_bpjs_ratio": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Porsi RS yang status BPJS-nya diketahui (bukan null); null bila tidak ada RS."
+          }
+        }
+      },
+      "InsightCoverage": {
+        "type": "object",
+        "required": [
+          "city_code",
+          "city_name",
+          "hospital_count",
+          "by_class",
+          "curated_count"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "city_code": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "hospital_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curated_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "by_class": {
+            "type": "object",
+            "required": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "A": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "B": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "C": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "D": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unknown": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "InsightServiceGap": {
+        "type": "object",
+        "required": [
+          "city_code",
+          "city_name",
+          "available",
+          "limited",
+          "unavailable",
+          "unknown",
+          "gap"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "city_code": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "available": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limited": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unavailable": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unknown": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "gap": {
+            "type": "boolean",
+            "description": "available + limited == 0 pada data kami; bukan klaim faktual tentang wilayah."
+          }
+        }
+      },
+      "InsightFreshness": {
+        "type": "object",
+        "required": [
+          "data_origin",
+          "fresh",
+          "aging",
+          "stale",
+          "unknown"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "data_origin": {
+            "type": "string",
+            "description": "Asal data RS; 'unknown' bila kosong."
+          },
+          "fresh": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "aging": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unknown": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "InsightMeta": {
+        "type": "object",
+        "required": [
+          "generated_at",
+          "sources",
+          "dataset",
+          "province_code"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "data_origin yang ikut dihitung."
+          },
+          "dataset": {
+            "type": "string",
+            "enum": [
+              "real",
+              "simulation",
+              "all"
+            ]
+          },
+          "province_code": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       }
     }
   },

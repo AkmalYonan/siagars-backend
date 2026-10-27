@@ -343,8 +343,12 @@ next:
 func (r *rig) conform(c call, w *httptest.ResponseRecorder, body map[string]any) {
 	r.t.Helper()
 	tmpl := r.template(c.path)
-	if w.Header().Get("X-Request-ID") == "" || w.Header().Get("Cache-Control") != "no-store" {
-		r.t.Errorf("%s %s: header X-Request-ID/Cache-Control no-store hilang: %v", c.method, c.path, w.Header())
+	want := "no-store"
+	if strings.HasPrefix(tmpl, "/insights/") && w.Code == 200 {
+		want = "public, max-age=300" // the only cacheable responses (contract §1, §6)
+	}
+	if w.Header().Get("X-Request-ID") == "" || w.Header().Get("Cache-Control") != want {
+		r.t.Errorf("%s %s: header X-Request-ID/Cache-Control %q hilang: %v", c.method, c.path, want, w.Header())
 	}
 	if tmpl == "" {
 		return // unknown routes are outside the contract

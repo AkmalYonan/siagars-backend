@@ -65,6 +65,8 @@ type Server struct {
 	ready func(context.Context) error
 	lim   limiter
 	dummy []byte
+	// insights caches rendered /insights/* bodies for 5 minutes (BE-20).
+	insights insightCache
 }
 type contextKey int
 
@@ -74,11 +76,12 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 	dummy, _ := bcrypt.GenerateFromPassword([]byte(random()), 12)
 	s := &Server{repo: repo, cfg: cfg, ready: ready, dummy: dummy}
 	mux := http.NewServeMux()
+	insSummary, insCoverage, insGaps, insFreshness := s.insightHandlers()
 	routes := []struct {
 		method, path string
 		handler      http.HandlerFunc
 	}{
-		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/hospitals/markers", s.markers}, {"GET", "/recommendations", s.recommendations}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
+		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/hospitals/markers", s.markers}, {"GET", "/recommendations", s.recommendations}, {"GET", "/insights/summary", insSummary}, {"GET", "/insights/coverage", insCoverage}, {"GET", "/insights/service-gaps", insGaps}, {"GET", "/insights/freshness", insFreshness}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
 		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
 		{"POST", "/internal/jobs/refresh-simulation", s.refreshSimulation}, {"GET", "/internal/jobs/refresh-simulation", s.refreshSimulation},
 		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"siagars/backend/internal/repository"
 	"strings"
 	"time"
@@ -92,6 +93,11 @@ func RunCurate(args []string, out io.Writer) error {
 		return errors.New("database is not migrated to 002_satusehat_msi.json; run migrate first")
 	}
 	outcomes, e := ApplyCuration(ctx, p.DB, valid, now)
+	// One audit entry per execution, written even when the run stopped part-way (earlier records may be
+	// applied). It holds counts and the file name only (BE-22).
+	if ae := p.AuditJob(ctx, "system:curate", "curate.apply", filepath.Base(file), "curate", AuditCounts(outcomes)); ae != nil {
+		fmt.Fprintln(out, "peringatan: audit log gagal ditulis:", ae)
+	}
 	failed := 0
 	for _, o := range outcomes {
 		fmt.Fprintln(out, "  "+o.String())
