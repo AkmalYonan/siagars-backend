@@ -48,7 +48,7 @@ JSON: `{"schema_version":1,"hospitals":[...]}`. CSV: satu RS per baris, kolom `s
 - Apply hanya menambah. Layanan/bed yang sudah ada (termasuk hasil pembaruan operator) **tidak ditimpa** dan dilaporkan sebagai "tetap". `bpjs` hanya diisi bila masih null. Field RS dari MSI, origin tingkat RS, dan `version` item operator tidak disentuh. Item baru: origin `curated`, `version` 1, `verified_at` null, `synced_at` waktu apply.
 - Mengulang apply tidak mengubah apa pun. Untuk mengoreksi data curated yang sudah masuk, gunakan alur pembaruan operator atau migration/skrip terpisah yang ditinjau; pipeline ini tidak menimpa.
 - RS yang tidak ditemukan (belum di-sync dari MSI) dilaporkan dan membuat exit non-zero.
-- Audit log belum ditulis oleh pipeline ini; simpan berkas kurasi yang diterapkan (versi, PIC, tanggal) sebagai catatan.
+- Setiap `--apply` menulis satu entri `audit_logs` (`curate.apply`, aktor `system:curate`, entitas nama berkas, hanya hitungan). Tetap simpan berkas kurasi yang diterapkan (versi, PIC, tanggal) sebagai catatan.
 
 ## Mencari sumber publik yang sah
 
