@@ -10,6 +10,7 @@ import (
 	"siagars/backend/internal/repository"
 	"siagars/backend/internal/service"
 	"siagars/backend/seed"
+	"slices"
 	"sort"
 	"strconv"
 	"testing"
@@ -91,6 +92,54 @@ func ids(hs []domain.Hospital) []string {
 		out[i] = h.ID
 	}
 	return out
+}
+
+func TestAssistantCandidatePushdown(t *testing.T) {
+	p := database(t)
+	ctx := context.Background()
+	curated, simulation := "curated", "simulation"
+	yes, no := true, false
+	known := repository.ProvenanceDoc{DataOrigin: curated}
+	available := repository.ServiceDoc{Slug: "nicu", Status: "available", ProvenanceDoc: known, Version: 1}
+	newDoc := func(id string, bpjs *bool, bpjsOrigin *string, entry repository.ServiceDoc) repository.HospitalDoc {
+		return repository.HospitalDoc{
+			ID: id, Name: id, ProvinceCode: "32", CityCode: "3275",
+			BPJS: bpjs, BPJSDataOrigin: bpjsOrigin, ProvenanceDoc: known, Services: []repository.ServiceDoc{entry}, Beds: []repository.BedDoc{},
+		}
+	}
+	unknown := available
+	unknown.Status = "unknown"
+	simulated := available
+	simulated.DataOrigin = simulation
+	docs := []repository.HospitalDoc{
+		newDoc("confirmed", &yes, &curated, available),
+		newDoc("declined", &no, &curated, available),
+		newDoc("legacy", &yes, nil, available),
+		newDoc("simulated-bpjs", &yes, &simulation, available),
+		newDoc("unknown-bpjs", nil, nil, available),
+		newDoc("simulated-service", &yes, &curated, simulated),
+	}
+	for i := 0; i <= service.MaxCandidates; i++ {
+		docs = append(docs, newDoc(fmt.Sprintf("a-ineligible-%03d", i), &yes, &curated, unknown))
+	}
+	if _, err := p.DB.Collection("hospitals").InsertMany(ctx, docs); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		alternatives bool
+		want         []string
+	}{
+		{false, []string{"confirmed"}},
+		{true, []string{"declined", "legacy", "simulated-bpjs", "unknown-bpjs"}},
+	} {
+		q := service.AssistantSearch{RecommendQuery: service.RecommendQuery{
+			City: "3275", RecommendRequest: domain.RecommendRequest{Services: []string{"nicu"}, BPJSRequired: true},
+		}, Alternatives: tc.alternatives}
+		hospitals, truncated, err := p.AssistantCandidates(ctx, q)
+		if err != nil || truncated || !slices.Equal(ids(hospitals), tc.want) {
+			t.Fatalf("alternatives=%v: ids=%v truncated=%v err=%v", tc.alternatives, ids(hospitals), truncated, err)
+		}
+	}
 }
 
 // TestSearchPushdownMatchesInMemory is the equivalence guard: for many generated queries the

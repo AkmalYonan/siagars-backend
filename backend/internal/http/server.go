@@ -90,6 +90,7 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 	}{
 		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/hospitals/markers", s.markers}, {"GET", "/recommendations", s.recommendations}, {"GET", "/insights/summary", insSummary}, {"GET", "/insights/coverage", insCoverage}, {"GET", "/insights/service-gaps", insGaps}, {"GET", "/insights/freshness", insFreshness}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
 		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
+		{"POST", "/assistant/chat", s.assistantChat},
 		{"POST", "/internal/jobs/refresh-simulation", s.refreshSimulation}, {"GET", "/internal/jobs/refresh-simulation", s.refreshSimulation},
 		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
 	}

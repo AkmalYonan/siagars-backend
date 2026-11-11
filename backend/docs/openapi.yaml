@@ -4916,6 +4916,373 @@
         }
       }
     },
+    "/assistant/chat": {
+      "post": {
+        "summary": "Asisten pencarian rumah sakit",
+        "description": "Satu pesan bahasa Indonesia. Pencarian memakai data layanan tercatat dan skor SiagaRS. Jika syarat BPJS tidak terpenuhi dalam hasil utama, alternatif hanya melonggarkan BPJS. Batas 30 permintaan per menit per IP.",
+        "operationId": "assistantChat",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Batas dihitung setelah trim."
+                  },
+                  "conversation_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uuid",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                    "description": "Diterima untuk kompatibilitas. Setiap pesan diproses mandiri."
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lng": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      }
+                    },
+                    "required": [
+                      "lat",
+                      "lng"
+                    ],
+                    "nullable": true,
+                    "additionalProperties": false,
+                    "description": "Koordinat dipakai untuk radius 20 km bila pesan tidak menyebut wilayah."
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "message": "Cari RS di Kota Bekasi yang punya NICU dan menerima BPJS."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Balasan pencarian, alternatif BPJS, klarifikasi, atau peringatan darurat.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reply": {
+                          "type": "string"
+                        },
+                        "is_emergency": {
+                          "type": "boolean",
+                          "description": "Penanda kata kunci darurat untuk menampilkan CTA bantuan medis. Selalu sediakan CTA darurat di UI."
+                        },
+                        "emergency_keywords": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "parsed_query": {
+                          "type": "object",
+                          "properties": {
+                            "services": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "province_code": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "city_code": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "location_label": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "bpjs": {
+                              "type": "string",
+                              "enum": [
+                                "wajib",
+                                "any"
+                              ]
+                            },
+                            "dataset": {
+                              "type": "string",
+                              "enum": [
+                                "real"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "services",
+                            "province_code",
+                            "city_code",
+                            "location_label",
+                            "bpjs",
+                            "dataset"
+                          ],
+                          "nullable": true
+                        },
+                        "recommendations": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Recommendation"
+                          },
+                          "maxItems": 10
+                        },
+                        "alternatives": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "recommendation": {
+                                "$ref": "#/components/schemas/Recommendation"
+                              },
+                              "reason_code": {
+                                "type": "string",
+                                "enum": [
+                                  "bpjs_not_accepted",
+                                  "bpjs_unknown"
+                                ]
+                              },
+                              "note": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recommendation",
+                              "reason_code",
+                              "note"
+                            ]
+                          },
+                          "maxItems": 10
+                        }
+                      },
+                      "required": [
+                        "reply",
+                        "is_emergency",
+                        "emergency_keywords",
+                        "parsed_query",
+                        "recommendations",
+                        "alternatives"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "model": {
+                          "type": "string",
+                          "enum": [
+                            "rule-nlp-v1"
+                          ]
+                        },
+                        "candidates_truncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "model",
+                        "candidates_truncated"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                },
+                "examples": {
+                  "empty": {
+                    "value": {
+                      "data": {
+                        "reply": "Pencarian ini belum menemukan rumah sakit sesuai filter Anda. Coba kirim ulang permintaan dengan wilayah yang lebih luas.",
+                        "is_emergency": false,
+                        "emergency_keywords": [],
+                        "parsed_query": {
+                          "services": [
+                            "nicu"
+                          ],
+                          "province_code": "32",
+                          "city_code": "3275",
+                          "location_label": "Kota Bekasi, Jawa Barat",
+                          "bpjs": "wajib",
+                          "dataset": "real"
+                        },
+                        "recommendations": [],
+                        "alternatives": []
+                      },
+                      "meta": {
+                        "model": "rule-nlp-v1",
+                        "candidates_truncated": false
+                      }
+                    }
+                  },
+                  "emergency": {
+                    "value": {
+                      "data": {
+                        "reply": "Peringatan gawat darurat. Segera hubungi 119 untuk bantuan medis atau 112 jika tersedia di daerah Anda. Segera cari pertolongan di IGD terdekat.",
+                        "is_emergency": true,
+                        "emergency_keywords": [
+                          "tidak sadar"
+                        ],
+                        "parsed_query": null,
+                        "recommendations": [],
+                        "alternatives": []
+                      },
+                      "meta": {
+                        "model": "rule-nlp-v1",
+                        "candidates_truncated": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON tidak valid atau field tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "invalid_json",
+                    "message": "JSON tidak valid atau field tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Metode tidak didukung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "method_not_allowed",
+                    "message": "Metode tidak didukung"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body maksimal 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "body_too_large",
+                    "message": "Body maksimal 64 KB"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "context harus berisi pasangan lat dan lng yang valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "context harus berisi pasangan lat dan lng yang valid"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Terlalu banyak percobaan; coba lagi nanti",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Terlalu banyak percobaan; coba lagi nanti"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "example": 60
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Terjadi kesalahan internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Terjadi kesalahan internal"
+                  },
+                  "request_id": "request-id-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/recommendations": {
       "get": {
         "tags": [
