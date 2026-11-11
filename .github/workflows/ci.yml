@@ -60,8 +60,14 @@ jobs:
           cache-dependency-path: backend/go.sum
       - name: Start MongoDB replica set
         run: |
-          docker run --detach --name siagars-mongo --publish 127.0.0.1:27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          docker run --detach --name siagars-mongo --publish 127.0.0.1:27017:27017 \
+            --entrypoint mongod mongo:7.0 --replSet rs0 --bind_ip_all --wiredTigerCacheSizeGB 0.25
+          trap 'docker logs --tail 100 siagars-mongo' ERR
           for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Running}}' siagars-mongo)" != true ]; then
+              docker logs --tail 100 siagars-mongo
+              exit 1
+            fi
             if docker exec siagars-mongo mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok' | grep -qx 1; then
               break
             fi
@@ -75,6 +81,7 @@ jobs:
             sleep 1
           done
           echo "::error::MongoDB replica set did not elect a primary."
+          docker logs --tail 100 siagars-mongo
           exit 1
       - name: MongoDB integration
         run: go test -count=1 ./tests/integration/...
