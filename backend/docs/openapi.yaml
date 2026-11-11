@@ -5104,7 +5104,8 @@
                         "model": {
                           "type": "string",
                           "enum": [
-                            "rule-nlp-v1"
+                            "rule-nlp-v1",
+                            "openrouter-filter-v1"
                           ]
                         },
                         "candidates_truncated": {

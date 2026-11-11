@@ -4,6 +4,8 @@ Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.y
 
 ## Belum dirilis
 
+- Chat dapat memberi panduan fitur SiagaRS dari template. Pilot OpenRouter opsional membantu menafsirkan pilihan layanan yang bertentangan. `meta.model` bernilai `openrouter-filter-v1` ketika pilihan model dipakai.
+
 - **BE-52** — `POST /assistant/chat` menerima satu pesan bahasa Indonesia untuk mencari RS. Hasil utama memerlukan data layanan yang tercatat tersedia dan BPJS yang tercatat menerima bila diminta. Jika hasil utama kosong, `data.alternatives` dapat memuat opsi dengan layanan dan wilayah yang sama beserta alasan per kartu.
 - Integrasikan melalui rewrite frontend `/api/v1/:path*`. Perlakukan balasan darurat, klarifikasi, dan hasil kosong sebagai respons `200`. Pertahankan akses ke CTA darurat saat API gagal. Contoh respons tersedia di [fixtures.json](fixtures.json).
 

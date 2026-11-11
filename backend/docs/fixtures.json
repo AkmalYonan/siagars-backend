@@ -15,6 +15,29 @@
       "candidates_truncated": false
     }
   },
+  "assistant_chat_openrouter": {
+    "data": {
+      "reply": "Pencarian ini belum menemukan rumah sakit sesuai filter Anda. Coba kirim ulang permintaan dengan wilayah yang lebih luas.",
+      "is_emergency": false,
+      "emergency_keywords": [],
+      "parsed_query": {
+        "services": [
+          "nicu"
+        ],
+        "province_code": "32",
+        "city_code": "3275",
+        "location_label": "Kota Bekasi, Jawa Barat",
+        "bpjs": "wajib",
+        "dataset": "real"
+      },
+      "recommendations": [],
+      "alternatives": []
+    },
+    "meta": {
+      "model": "openrouter-filter-v1",
+      "candidates_truncated": false
+    }
+  },
   "assistant_chat_empty": {
     "data": {
       "reply": "Pencarian ini belum menemukan rumah sakit sesuai filter Anda. Coba kirim ulang permintaan dengan wilayah yang lebih luas.",

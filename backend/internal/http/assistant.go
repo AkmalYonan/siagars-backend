@@ -71,6 +71,7 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 		Alternatives:      []assistantAlternative{},
 	}
 	truncated := false
+	model := "rule-nlp-v1"
 	respond := func(reply string) {
 		if truncated {
 			reply += " Pencarian mencapai batas jumlah kandidat. Hasil hanya mencakup kandidat yang sempat diperiksa."
@@ -78,7 +79,7 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 		data.Reply = reply
 		send(w, 200, map[string]any{
 			"data": data,
-			"meta": map[string]any{"model": "rule-nlp-v1", "candidates_truncated": truncated},
+			"meta": map[string]any{"model": model, "candidates_truncated": truncated},
 		})
 	}
 	if len(data.EmergencyKeywords) > 0 {
@@ -90,6 +91,15 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 		respond("Silakan hubungi tenaga kesehatan atau fasilitas kesehatan untuk pemeriksaan dan saran pengobatan.")
 		return
 	}
+	const scopeReply = "Saya bisa membantu mencari rumah sakit berdasarkan layanan, wilayah, dan BPJS. " + service.AssistantExample
+	if message.UnrelatedRequest() {
+		respond(scopeReply)
+		return
+	}
+	if guide := message.SiteGuide(); guide != "" {
+		respond(guide)
+		return
+	}
 
 	ctx := r.Context()
 	masters, err := s.repo.Services(ctx)
@@ -99,7 +109,7 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed := message.Query(masters)
 	if len(parsed.Services) == 0 && !message.HospitalSearch() {
-		respond("Saya bisa membantu mencari rumah sakit berdasarkan layanan, wilayah, dan BPJS. " + service.AssistantExample)
+		respond(scopeReply)
 		return
 	}
 	data.ParsedQuery = &parsed
@@ -135,6 +145,16 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 	if len(parsed.Services) > 6 {
 		respond("Pilih maksimal 6 layanan dalam satu pencarian. " + service.AssistantExample)
 		return
+	}
+	if hints, needsClarification := message.FilterHints(masters, parsed.Services); needsClarification {
+		services := s.interpretAssistantServices(r, hints)
+		if len(services) == 0 {
+			parsed.Services = []string{}
+			respond("Mohon sebutkan hanya layanan yang ingin dicari dan kirim ulang permintaan lengkap. " + service.AssistantExample)
+			return
+		}
+		parsed.Services = services
+		model = "openrouter-filter-v1"
 	}
 
 	params := url.Values{"services": {strings.Join(parsed.Services, ",")}}

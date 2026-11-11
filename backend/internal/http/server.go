@@ -17,6 +17,7 @@ import (
 	"siagars/backend/docs"
 	"siagars/backend/internal/config"
 	"siagars/backend/internal/domain"
+	"siagars/backend/internal/integrations/openrouter"
 	"siagars/backend/internal/repository"
 	"siagars/backend/internal/service"
 	"slices"
@@ -70,6 +71,7 @@ type Server struct {
 	ready         func(context.Context) error
 	lim           limiter
 	sharedLimiter rateLimitStore
+	assistantLLM  assistantSelector
 	dummy         []byte
 	// insights caches rendered /insights/* bodies for 5 minutes (BE-20).
 	insights insightCache
@@ -82,6 +84,11 @@ func New(repo Store, cfg config.Config, ready func(context.Context) error) http.
 	dummy, _ := bcrypt.GenerateFromPassword([]byte(random()), 12)
 	s := &Server{repo: repo, cfg: cfg, ready: ready, dummy: dummy}
 	s.sharedLimiter, _ = repo.(rateLimitStore)
+	if cfg.AssistantLLM.Ready() {
+		s.assistantLLM = openrouter.New(cfg.AssistantLLM)
+	} else if cfg.AssistantLLM.Enabled {
+		slog.Warn("assistant llm configuration incomplete; using local parser")
+	}
 	mux := http.NewServeMux()
 	insSummary, insCoverage, insGaps, insFreshness := s.insightHandlers()
 	routes := []struct {
