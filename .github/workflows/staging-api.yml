@@ -7,27 +7,47 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: staging-api
-  cancel-in-progress: false
-
 jobs:
-  api:
+  target:
     if: >-
       (github.event_name == 'deployment_status' &&
        github.event.deployment_status.state == 'success' &&
-       (github.event.deployment.ref == 'develop' || github.event.deployment.ref == 'refs/heads/develop') &&
-       !github.event.deployment.production_environment &&
-       github.event.deployment.environment == (vars.STAGING_DEPLOYMENT_ENVIRONMENT || 'Preview')) ||
+       github.event.deployment_status.creator.login == 'vercel[bot]' &&
+       github.event.deployment.environment == 'Preview') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.select.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Select the develop deployment
+        id: select
+        env:
+          DEPLOYED_SHA: ${{ github.event.deployment.sha || github.sha }}
+        run: |
+          if [ "$(git rev-parse HEAD)" = "$DEPLOYED_SHA" ]; then
+            echo "sha=$DEPLOYED_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "Deployment is outside the current develop revision."
+          fi
+
+  api:
+    needs: target
+    if: needs.target.outputs.sha != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: staging
+    concurrency:
+      group: staging-api
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: qa
     env:
-      SIAGARS_BASE_URL: ${{ vars.SIAGARS_STAGING_URL }}
+      STAGING_URL: ${{ vars.SIAGARS_STAGING_URL }}
+      DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url }}
       SIAGARS_PUBLIC_ORIGIN: ${{ vars.SIAGARS_STAGING_PUBLIC_ORIGIN }}
       OPERATOR_EMAIL: ${{ secrets.E2E_OPERATOR_EMAIL }}
       OPERATOR_PASSWORD: ${{ secrets.E2E_OPERATOR_PASSWORD }}
@@ -36,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.deployment.sha || github.sha }}
+          ref: ${{ needs.target.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -48,10 +68,16 @@ jobs:
         shell: bash
         run: |
           node --input-type=module <<'JS'
-          import { readFileSync } from 'node:fs';
-          const target = new URL(process.env.SIAGARS_BASE_URL);
-          if (target.protocol !== 'https:' || target.hostname === 'siagars-backend.vercel.app') {
-            throw new Error('SIAGARS_STAGING_URL must name the HTTPS staging environment.');
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const staging = new URL(process.env.STAGING_URL);
+          const target = new URL(process.env.DEPLOYMENT_URL || staging.origin);
+          const [project, team] = staging.hostname.split('-git-develop-');
+          const isProjectPreview = team && target.hostname.startsWith(`${project}-`) &&
+            target.hostname.endsWith(`-${team}`);
+          if (target.protocol !== 'https:' || target.username || target.password || target.port ||
+              target.hostname === 'siagars-backend.vercel.app' ||
+              (target.origin !== staging.origin && !isProjectPreview)) {
+            throw new Error('Expected the HTTPS Preview of the configured Vercel staging project.');
           }
           const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
           const headers = bypass ? { 'x-vercel-protection-bypass': bypass } : {};
@@ -66,5 +92,6 @@ jobs:
           const expected = JSON.parse(readFileSync('../backend/docs/openapi.yaml', 'utf8')).info.version;
           const live = await get('/docs/openapi.json');
           if (live.info?.version !== expected) throw new Error(`Expected staging API ${expected}`);
+          appendFileSync(process.env.GITHUB_ENV, `SIAGARS_BASE_URL=${target.origin}\n`);
           JS
       - run: npm test
