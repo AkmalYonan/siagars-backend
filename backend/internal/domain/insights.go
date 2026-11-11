@@ -69,7 +69,7 @@ func Summarize(hs []Hospital, now time.Time) InsightSummary {
 	fresh, bpjs := 0, 0
 	for _, h := range hs {
 		cities[h.CityCode] = true
-		if h.DataOrigin == "curated" {
+		if hasCuratedFacts(h) {
 			s.CuratedCount++
 		}
 		if Freshness(h.SourceUpdatedAt, now) == "fresh" {
@@ -129,7 +129,7 @@ func Coverage(hs []Hospital) []CityCoverage {
 			by[h.CityCode] = c
 		}
 		c.HospitalCount++
-		if h.DataOrigin == "curated" {
+		if hasCuratedFacts(h) {
 			c.CuratedCount++
 		}
 		switch classOf(h) {
@@ -225,4 +225,22 @@ func FreshnessByOrigin(hs []Hospital, now time.Time) []OriginFreshness {
 		out = append(out, *by[k])
 	}
 	return out
+}
+
+// hasCuratedFacts includes field-level curation without changing the hospital's source.
+func hasCuratedFacts(h Hospital) bool {
+	if h.DataOrigin == "curated" || (h.BPJS != nil && h.BPJSDataOrigin != nil && *h.BPJSDataOrigin == "curated") {
+		return true
+	}
+	for _, service := range h.Services {
+		if service.DataOrigin == "curated" {
+			return true
+		}
+	}
+	for _, bed := range h.Beds {
+		if bed.DataOrigin == "curated" {
+			return true
+		}
+	}
+	return false
 }

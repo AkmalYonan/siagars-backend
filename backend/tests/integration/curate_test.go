@@ -24,6 +24,8 @@ func TestCurateApply(t *testing.T) {
 	// An operator already updated ICU; curation must not overwrite it.
 	opAt := at.Add(-time.Hour)
 	msi.Services = append(msi.Services, repository.ServiceDoc{Slug: "icu", Status: "limited", ProvenanceDoc: repository.Simulation(opAt), Version: 3})
+	// Untouched simulation is replaced in-place without overwriting the operator's ICU update.
+	msi.Services = append(msi.Services, repository.ServiceDoc{Slug: "nicu", Status: "available", ProvenanceDoc: repository.Simulation(at), Version: 1})
 	hospitals := p.DB.Collection("hospitals")
 	if _, e := hospitals.InsertOne(ctx, msi); e != nil {
 		t.Fatal(e)
@@ -55,7 +57,7 @@ func TestCurateApply(t *testing.T) {
 		t.Fatalf("operator update overwritten: %+v", icu)
 	}
 	nicu := got.Services[1]
-	if nicu.DataOrigin != "curated" || nicu.VerifiedAt != nil || nicu.Version != 1 || nicu.SourceURL == nil || *nicu.SourceURL != src || !nicu.SourceUpdatedAt.Equal(srcAt) {
+	if nicu.Status != "unknown" || nicu.DataOrigin != "curated" || nicu.VerifiedAt != nil || nicu.Version != 1 || nicu.SourceURL == nil || *nicu.SourceURL != src || !nicu.SourceUpdatedAt.Equal(srcAt) {
 		t.Fatalf("curated service: %+v", nicu)
 	}
 	icuBed, nicuBed := got.Beds[0], got.Beds[1]

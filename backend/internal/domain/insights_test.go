@@ -68,3 +68,22 @@ func TestFreshnessByOrigin(t *testing.T) {
 		t.Fatalf("%+v", f)
 	}
 }
+
+func TestInsightsCountsCuratedFactsOncePerHospital(t *testing.T) {
+	curated := Provenance{DataOrigin: "curated"}
+	no := false
+	hospitals := []Hospital{
+		{CityCode: "3171", Provenance: curated, BPJSDataOrigin: &curated.DataOrigin},
+		{CityCode: "3171", Services: []Service{{Provenance: curated}, {Provenance: curated}}},
+		{CityCode: "3171", Beds: []Bed{{Provenance: curated}}},
+		{CityCode: "3171", BPJS: &no, BPJSDataOrigin: &curated.DataOrigin},
+		{CityCode: "3171", BPJSDataOrigin: &curated.DataOrigin},
+		{CityCode: "3171", Services: []Service{{Provenance: Provenance{DataOrigin: "simulation"}}}},
+	}
+	if got := Summarize(hospitals, time.Now()).CuratedCount; got != 4 {
+		t.Fatalf("summary curated_count = %d, want 4", got)
+	}
+	if got := Coverage(hospitals)[0].CuratedCount; got != 4 {
+		t.Fatalf("coverage curated_count = %d, want 4", got)
+	}
+}
