@@ -31,7 +31,7 @@ Estimasi dalam **HO** (hari-orang). Prioritas: **P0** wajib untuk versi tsb, **P
 | 0 | **v0.3.1** | 26–28 Okt | Stabilisasi fondasi | Prod 0.3.1 live, CI hijau di 2 repo, kontrak v0.4 dibekukan |
 | 1 | **v0.4.0** | 28–31 Okt | Decision Core | `/pilih-rs` jalan end-to-end di prod 31 Okt |
 | — | v0.4.0 | **1 Nov** | **First Draft** | PDF + repo publik terkirim |
-| 2 | **v0.5.0** | 2–6 Nov | Insights & Data Nyata | `/wawasan` live, ≥30 RS kurasi |
+| 2 | **v0.5.0** | 2–6 Nov | Insights & Data Mix | `/wawasan` menampilkan sumber data dan label simulasi |
 | 3 | **v0.6.0** | 7–10 Nov | Hardening + Feedback | E2E 6/6 hijau, a11y & responsif lulus |
 | — | **v1.0.0** | **11 Nov** | **Final Submission** | Tag, proposal, video terkirim |
 | 4 | **v1.1.0** | 12–28 Nov | Onsite Prep & Validasi | Usability test selesai, dry-run demo lulus |
@@ -91,21 +91,21 @@ Estimasi dalam **HO** (hari-orang). Prioritas: **P0** wajib untuk versi tsb, **P
 
 ---
 
-## 3. Phase 2 — v0.5.0 "Insights & Data Nyata" (2–6 Nov)
+## 3. Phase 2 — v0.5.0 "Insights & Data Mix" (2–6 Nov)
 
-**Tujuan:** konten kuat (20%) & orisinalitas: dashboard wawasan + data kurasi nyata; detail RS bisa dibagikan.
+**Tujuan:** konten kuat (20%) & orisinalitas: dashboard wawasan + identitas RS SATUSEHAT Sandbox dan data fasilitas simulasi; detail RS bisa dibagikan.
 
 | ID | Judul | Owner | P | Est | Depends | Definition of Done |
 |---|---|---|---|---|---|---|
 | BE-20 | `GET /insights/summary`, `/insights/coverage`, `/insights/service-gaps`, `/insights/freshness` (aggregation pipeline, cache 5 menit) | **BE** | P0 | 2 | — | Sesuai kontrak §6 |
-| BE-21 | Terapkan data kurasi (`curate --apply`) batch per hari | **BE** | P0 | 0,5 | PM-20 | ≥ 30 RS `curated` di prod |
+| BE-21 | Verifikasi Data Mix | **BE** | P0 | 0,5 | — | Identitas RS SATUSEHAT Sandbox dan fakta fasilitas/BPJS simulasi dapat dibedakan melalui provenance API |
 | BE-22 | Audit log untuk `curate` & job refresh | **BE** | P1 | 0,5 | — | Entri `audit_logs` per eksekusi |
 | BE-23 | Pastikan `GET /admin/bpjs-checks` hanya tersamar + paginasi | **BE** | P1 | 0,25 | BE-01 | — |
 | FE-20 | `/wawasan`: KPI, bar per kota, tabel kesenjangan, stacked kesegaran (SVG ringan, tanpa lib berat), filter provinsi | **FE** | P0 | 2 | BE-20 | Grafik punya teks alternatif/tabel |
 | FE-21 | SSR + `generateMetadata` (OG) untuk `/rumah-sakit/[id]`, tombol Bagikan (Web Share + salin tautan) | **FE** | P0 | 1 | — | Pratinjau link di WA menampilkan nama RS |
 | FE-22 | `/operator/riwayat-bpjs` (tersamar, tanpa reveal) | **FE** | P1 | 0,5 | BE-23 | — |
 | FE-23 | `/tentang-data`: metodologi skor rekomendasi & kualitas data | **FE** (copy: PM) | P0 | 0,5 | — | — |
-| PM-20 | Kumpulkan & verifikasi sumber 30–50 RS (situs resmi RS/dinkes), isi template CSV kurasi | **PM** | P0 | 2 | — | CSV valid `curate` dry-run |
+| PM-20 | Kumpulkan dan verifikasi sumber RS untuk kurasi | **PM** | Ditunda | 2 | — | CSV valid `curate` dry-run |
 | PM-21 | Siapkan materi mentor review (3–6 Nov) | **PM** | P1 | 0,25 | — | — |
 | X-20 | Rilis 0.5.0 (6 Nov) | **BE+FE** | P0 | 0,25 | P0 di atas | Tag `v0.5.0` kedua repo |
 
@@ -197,7 +197,7 @@ R = Responsible (mengerjakan) · A = Accountable (memutuskan) · C = Consulted �
 |---|---|
 | v0.3.1 | BE-01 BPJS tanpa NIK mentah · BE-02 rilis prod · BE-03 kode wilayah · BE-04 CI · BE-05 cron data simulasi · BE-06 kontrak · BE-07 docs · BE-08 `hospital_name` · X-01 kontrak v0.4 · bantu PM-01 rotasi |
 | v0.4.0 | BE-10 `/recommendations` · BE-11 `data_quality` · BE-12 markers bbox · BE-13 rilis · X-10 |
-| v0.5.0 | BE-20 insights · BE-21 import kurasi · BE-22 audit curate · BE-23 riwayat BPJS · X-20 |
+| v0.5.0 | BE-20 insights · BE-21 verifikasi Data Mix · BE-22 audit curate · BE-23 riwayat BPJS · X-20 |
 | v0.6.0 | BE-30 rate limiter bersama · BE-31 load test · BE-32 hardening · X-30 (API) |
 | v1.0.0 | BE-40 rilis · X-40 |
 | v1.1.0 | BE-50 monitoring · BE-51 tuning · X-50 |

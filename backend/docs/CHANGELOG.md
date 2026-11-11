@@ -2,7 +2,9 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
-## 1.0.0 (kandidat rilis)
+## 1.0.0
+
+- Rilis Data Mix memakai identitas RS dari SATUSEHAT Sandbox dan fakta demo berlabel `simulation`. `curated_count=0` valid untuk data rilis.
 
 - `curated_count` pada Summary dan Coverage menghitung setiap RS sekali bila RS, layanan, bed, atau BPJS memiliki origin `curated`.
 - Rate limit login, tracking, dan BPJS berbagi kuota antar instance melalui MongoDB. Migrasi `009_rate_limits` membuat indeks TTL. Jika penyimpanan rate limit gagal, login mengembalikan `503 service_unavailable` dan endpoint publik memakai limiter lokal.

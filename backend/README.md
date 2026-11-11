@@ -1,4 +1,4 @@
-# SiagaRS Backend (API 1.0.0, kandidat rilis)
+# SiagaRS Backend (API 1.0.0)
 
 Backend Go untuk SiagaRS — sistem pendukung keputusan pemilihan rumah sakit (sub-tema Data-Driven Decision Support): direktori RS, provenance, tracking rujukan sintetis, cek BPJS simulasi, dan operator. Versi API = `info.version` di [kontrak OpenAPI](docs/openapi.yaml); riwayat di [CHANGELOG](docs/CHANGELOG.md).
 

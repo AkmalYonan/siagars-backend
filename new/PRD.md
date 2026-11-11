@@ -19,7 +19,7 @@ Backend SiagaRS adalah REST API Go + MongoDB yang menjadi **mesin keputusan & su
 | Tujuan | Metrik |
 |---|---|
 | Rekomendasi cepat & benar | p95 ≤ 500 ms `/recommendations` (warm); ≥ 15 kasus test tabel scoring lulus |
-| Data jujur | 0 nilai simulasi tanpa label; ≥ 30 RS `curated` di prod (v0.5) |
+| Data jujur | Data Mix dengan identitas RS dari SATUSEHAT Sandbox dan fakta demo berlabel `simulation` |
 | Andal saat dinilai | Smoke test prod lulus di setiap rilis; uptime ≥ 99% di 11 & 28 Nov |
 | Aman | 0 secret di git; rate limit bersama (v0.6); tidak ada NIK mentah tersimpan |
 
@@ -57,7 +57,7 @@ Backend SiagaRS adalah REST API Go + MongoDB yang menjadi **mesin keputusan & su
 | Tiket | Kebutuhan | Acceptance criteria |
 |---|---|---|
 | BE-20 | `/insights/{summary,coverage,service-gaps,freshness}` | Aggregation pipeline di repository; filter `province_code`, `dataset`; `Cache-Control: public, max-age=300` + cache in-memory 5 menit; `meta.generated_at`, `meta.sources`; test integrasi terhadap dataset seed menghasilkan angka yang diharapkan |
-| BE-21 | Import kurasi | `manage curate <file>` dry-run → review PM → `--apply`; ≥ 30 RS `curated` di prod; `verified_at` tetap tidak di-set |
+| BE-21 | Verifikasi Data Mix | Identitas RS memakai origin `satusehat_sandbox`; fakta simulasi layanan, bed, dan BPJS memakai origin `simulation`; kurasi sumber ditunda |
 | BE-22 | Audit curate & job | `audit_logs` entri per eksekusi (aktor = `system:curate`/`system:cron`, jumlah perubahan) |
 | BE-23 | Riwayat BPJS | `GET /admin/bpjs-checks` hanya field tersamar + paginasi `page/limit` |
 
