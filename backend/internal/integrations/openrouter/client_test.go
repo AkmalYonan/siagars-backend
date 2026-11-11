@@ -69,7 +69,7 @@ func TestSelectRejectsUpstreamErrorsAndUnexpectedContent(t *testing.T) {
 		c.http.Transport = transportFunc(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: tc.status, Body: io.NopCloser(strings.NewReader(tc.body))}, nil
 		})
-		if _, err := c.Select(context.Background(), service.AssistantHints{}); err == nil || strings.Contains(err.Error(), "upstream payload") {
+		if _, err := c.Select(context.Background(), service.AssistantHints{ServiceIDs: []string{"nicu"}}); err == nil || strings.Contains(err.Error(), "upstream payload") {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}

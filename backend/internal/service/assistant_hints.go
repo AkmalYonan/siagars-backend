@@ -35,7 +35,7 @@ func (m AssistantMessage) SiteGuide() string {
 type AssistantHints struct {
 	Terms              []string `json:"terms"`
 	ServiceIDs         []string `json:"service_ids"`
-	ExcludedServiceIDs []string `json:"-"`
+	ExcludedServiceIDs []string `json:"excluded_service_ids,omitempty"`
 }
 
 // FilterHints rebuilds the input from canonical service IDs and fixed cue words.
@@ -100,7 +100,8 @@ func (m AssistantMessage) FilterHints(masters []domain.Service, selected []strin
 		phrases = append(phrases, phrase)
 	}
 	slices.SortFunc(phrases, func(a, b string) int { return len(b) - len(a) })
-	hints := AssistantHints{ServiceIDs: selected, ExcludedServiceIDs: excluded}
+	slices.Sort(excluded)
+	hints := AssistantHints{ServiceIDs: selected, ExcludedServiceIDs: slices.Compact(excluded)}
 	for rest := strings.TrimSpace(m.text); rest != ""; {
 		start := rest
 		for _, phrase := range phrases {
