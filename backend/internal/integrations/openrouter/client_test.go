@@ -15,6 +15,32 @@ type transportFunc func(*http.Request) (*http.Response, error)
 
 func (f transportFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+func TestAnswerSendsQuestionAndGrounding(t *testing.T) {
+	c := New(config.AssistantLLMConfig{Model: nvidiaFreeModel, Provider: "nvidia"})
+	c.http.Transport = transportFunc(func(req *http.Request) (*http.Response, error) {
+		var body struct {
+			Messages []struct{ Content string }
+			Format   struct {
+				JSONSchema struct{ Name string } `json:"json_schema"`
+			} `json:"response_format"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Messages) != 2 || body.Format.JSONSchema.Name != "siagars_answer" ||
+			body.Messages[1].Content != `{"question":"Halo","siagars_passages":{"greeting":"Halo dari SiagaRS"}}` {
+			t.Fatalf("unexpected model payload")
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(
+			`{"choices":[{"finish_reason":"stop","message":{"content":"{\"passage_ids\":[\"greeting\"]}"}}]}`,
+		))}, nil
+	})
+	got, err := c.Answer(context.Background(), "Halo", map[string]string{"greeting": "Halo dari SiagaRS"})
+	if err != nil || len(got) != 1 || got[0] != "greeting" {
+		t.Fatalf("answer=%v err=%v", got, err)
+	}
+}
+
 func TestSelectUsesPinnedFreeProviderAndStrictSchema(t *testing.T) {
 	c := New(config.AssistantLLMConfig{APIKey: "test-key", Model: "test/model:free", Provider: "test/endpoint"})
 	c.http.Transport = transportFunc(func(req *http.Request) (*http.Response, error) {

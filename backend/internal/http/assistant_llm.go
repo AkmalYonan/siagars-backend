@@ -19,13 +19,23 @@ func (s *Server) interpretAssistantServices(r *http.Request, hints service.Assis
 	if s.assistantLLM == nil || len(hints.Terms) == 0 {
 		return nil
 	}
+	var ids []string
+	s.withAssistantLLM(r, func(ctx context.Context) string {
+		var outcome string
+		ids, outcome = s.selectAssistantServices(ctx, hints)
+		return outcome
+	})
+	return ids
+}
+
+func (s *Server) withAssistantLLM(r *http.Request, call func(context.Context) string) {
 	started := time.Now()
 	outcome := "quota_unavailable"
 	defer func() {
 		slog.Info("assistant llm", "request_id", rid(r), "outcome", outcome, "duration_ms", time.Since(started).Milliseconds())
 	}()
 	if s.sharedLimiter == nil {
-		return nil
+		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
 	defer cancel()
@@ -42,38 +52,38 @@ func (s *Server) interpretAssistantServices(r *http.Request, hints service.Assis
 	} {
 		allowed, err := s.sharedLimiter.TakeRateLimit(quotaCtx, limit.key, limit.max, limit.window, started)
 		if err != nil {
-			return nil
+			return
 		}
 		if !allowed {
 			outcome = "quota_exhausted"
-			return nil
+			return
 		}
 	}
 	stopQuota()
+	outcome = call(ctx)
+}
+
+func (s *Server) selectAssistantServices(ctx context.Context, hints service.AssistantHints) ([]string, string) {
 	selection, err := s.assistantLLM.Select(ctx, hints)
 	if err != nil {
 		// The adapter returns fixed error codes without upstream response bodies.
-		outcome = err.Error()
-		return nil
+		return nil, err.Error()
 	}
 	if selection.Action == "clarify" && len(selection.ServiceIDs) == 0 {
-		outcome = "clarification"
-		return nil
+		return nil, "clarification"
 	}
-	outcome = "invalid_selection"
 	if selection.Action != "select" || len(selection.ServiceIDs) == 0 || len(selection.ServiceIDs) >= len(hints.ServiceIDs) {
-		return nil
+		return nil, "invalid_selection"
 	}
 	ids := slices.Clone(selection.ServiceIDs)
 	slices.Sort(ids)
-	if len(slices.Compact(slices.Clone(ids))) != len(ids) {
-		return nil
+	if len(slices.Compact(ids)) != len(ids) {
+		return nil, "invalid_selection"
 	}
 	for _, id := range ids {
 		if !slices.Contains(hints.ServiceIDs, id) || slices.Contains(hints.ExcludedServiceIDs, id) {
-			return nil
+			return nil, "invalid_selection"
 		}
 	}
-	outcome = "selected"
-	return ids
+	return ids, "selected"
 }

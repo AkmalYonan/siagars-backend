@@ -4,7 +4,28 @@ import (
 	"siagars/backend/internal/domain"
 	"slices"
 	"strings"
+	"unicode"
 )
+
+// ModelQuestion rejects likely personal or clinical inputs before the conversational fallback.
+func (m AssistantMessage) ModelQuestion(original string) (string, bool) {
+	if strings.ContainsAny(original, "@/\\<>") || strings.ContainsFunc(original, unicode.IsDigit) ||
+		m.has("nama", "bernama", "alamat", "nik", "nomor", "kode", "tanggal lahir", "rekam medis", "pasien",
+			"keluhan", "gejala", "saya sakit", "anak saya", "ibu saya", "ayah saya", "demam", "nyeri", "sesak", "muntah", "batuk") {
+		return "", false
+	}
+	question := strings.Join(strings.Fields(original), " ")
+	return question, question != ""
+}
+
+func (m AssistantMessage) IsGreeting() bool {
+	switch strings.TrimSpace(m.text) {
+	case "halo", "halo siagars", "hai", "hai siagars", "hi", "hei", "halo kak", "hai kak", "selamat pagi", "selamat siang", "selamat sore", "selamat malam":
+		return true
+	default:
+		return false
+	}
+}
 
 func (m AssistantMessage) UnrelatedRequest() bool {
 	return m.has("buat puisi", "buatkan puisi", "tulis puisi", "tuliskan puisi",

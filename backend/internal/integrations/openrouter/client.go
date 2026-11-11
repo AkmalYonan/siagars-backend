@@ -43,45 +43,54 @@ type Selection struct {
 }
 
 func (c *Client) Select(ctx context.Context, hints service.AssistantHints) (Selection, error) {
-	input, err := json.Marshal(hints)
-	if err != nil {
-		return Selection{}, errors.New("encode_hints")
-	}
-	provider := map[string]any{
-		"only": []string{c.config.Provider}, "require_parameters": true,
-		"allow_fallbacks": false, "data_collection": "deny", "zdr": true,
-	}
-	// This trial endpoint receives only the canonical service IDs and cue words in hints.
-	if c.config.Model == nvidiaFreeModel && c.config.Provider == "nvidia" {
-		provider["data_collection"], provider["zdr"] = "allow", false
-	}
 	eligible := slices.DeleteFunc(slices.Clone(hints.ServiceIDs), func(id string) bool {
 		return slices.Contains(hints.ExcludedServiceIDs, id)
 	})
 	if len(eligible) == 0 {
 		return Selection{}, errors.New("no_eligible_service")
 	}
+
+	var selection Selection
+	err := c.complete(ctx, hints, instructions, "siagars_service_filter", map[string]any{
+		"type": "object", "additionalProperties": false,
+		"required": []string{"action", "service_ids"},
+		"properties": map[string]any{
+			"action": map[string]any{"type": "string", "enum": []string{"select", "clarify"}},
+			"service_ids": map[string]any{"type": "array",
+				"items": map[string]any{"type": "string", "enum": eligible}},
+		},
+	}, &selection)
+	if err == nil && selection.ServiceIDs == nil {
+		err = errors.New("invalid_selection_json")
+	}
+	return selection, err
+}
+
+func (c *Client) complete(ctx context.Context, input any, instructions, name string, schema map[string]any, result any) error {
+	encoded, err := json.Marshal(input)
+	if err != nil {
+		return errors.New("encode_input")
+	}
+	provider := map[string]any{
+		"only": []string{c.config.Provider}, "require_parameters": true,
+		"allow_fallbacks": false, "data_collection": "deny", "zdr": true,
+	}
+	// This trial endpoint receives only locally screened questions or canonical filter hints.
+	if c.config.Model == nvidiaFreeModel && c.config.Provider == "nvidia" {
+		provider["data_collection"], provider["zdr"] = "allow", false
+	}
 	payload := map[string]any{
 		"model": c.config.Model,
 		"messages": []map[string]string{
 			{"role": "system", "content": instructions},
-			{"role": "user", "content": string(input)},
+			{"role": "user", "content": string(encoded)},
 		},
 		"max_tokens": 256,
 		"provider":   provider,
 		"response_format": map[string]any{
 			"type": "json_schema",
 			"json_schema": map[string]any{
-				"name": "siagars_service_filter", "strict": true,
-				"schema": map[string]any{
-					"type": "object", "additionalProperties": false,
-					"required": []string{"action", "service_ids"},
-					"properties": map[string]any{
-						"action": map[string]any{"type": "string", "enum": []string{"select", "clarify"}},
-						"service_ids": map[string]any{"type": "array",
-							"items": map[string]any{"type": "string", "enum": eligible}},
-					},
-				},
+				"name": name, "strict": true, "schema": schema,
 			},
 		},
 	}
@@ -90,29 +99,29 @@ func (c *Client) Select(ctx context.Context, hints service.AssistantHints) (Sele
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return Selection{}, errors.New("encode_request")
+		return errors.New("encode_request")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return Selection{}, errors.New("build_request")
+		return errors.New("build_request")
 	}
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 	res, err := c.http.Do(req)
 	if err != nil {
 		if ctx.Err() != nil {
-			return Selection{}, errors.New("deadline")
+			return errors.New("deadline")
 		}
-		return Selection{}, errors.New("transport")
+		return errors.New("transport")
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return Selection{}, fmt.Errorf("upstream_http_%d", res.StatusCode)
+		return fmt.Errorf("upstream_http_%d", res.StatusCode)
 	}
 	const maxBody = 64 << 10
 	raw, err := io.ReadAll(io.LimitReader(res.Body, maxBody+1))
 	if err != nil || len(raw) > maxBody {
-		return Selection{}, errors.New("response_size_or_read")
+		return errors.New("response_size_or_read")
 	}
 	var reply struct {
 		Choices []struct {
@@ -123,13 +132,12 @@ func (c *Client) Select(ctx context.Context, hints service.AssistantHints) (Sele
 		} `json:"choices"`
 	}
 	if json.Unmarshal(raw, &reply) != nil || len(reply.Choices) != 1 || reply.Choices[0].FinishReason != "stop" {
-		return Selection{}, errors.New("invalid_completion")
+		return errors.New("invalid_completion")
 	}
 	d := json.NewDecoder(strings.NewReader(reply.Choices[0].Message.Content))
 	d.DisallowUnknownFields()
-	var selection Selection
-	if d.Decode(&selection) != nil || d.Decode(new(any)) != io.EOF || selection.ServiceIDs == nil {
-		return Selection{}, errors.New("invalid_selection_json")
+	if d.Decode(result) != nil || d.Decode(new(any)) != io.EOF {
+		return errors.New("invalid_selection_json")
 	}
-	return selection, nil
+	return nil
 }
