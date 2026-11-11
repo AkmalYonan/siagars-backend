@@ -66,7 +66,8 @@ func (m AssistantMessage) MedicalAdvice() bool {
 }
 
 func (m AssistantMessage) HospitalSearch() bool {
-	return m.has("rs", "rumah sakit", "rsud", "rsup", "faskes", "layanan", "bpjs")
+	return m.has("rs", "rumah sakit", "rsud", "rsup", "faskes", "layanan", "bpjs") &&
+		m.has("cari", "carikan", "mencari", "butuh", "perlu", "rekomendasi", "terdekat", "rs di", "rumah sakit di")
 }
 
 var assistantServiceAliases = map[string][]string{

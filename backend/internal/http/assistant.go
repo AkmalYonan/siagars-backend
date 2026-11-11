@@ -91,9 +91,22 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 		respond("Silakan hubungi tenaga kesehatan atau fasilitas kesehatan untuk pemeriksaan dan saran pengobatan.")
 		return
 	}
-	const scopeReply = "Saya bisa membantu mencari rumah sakit berdasarkan layanan, wilayah, dan BPJS. " + service.AssistantExample
+	answerWithModel := func(fallback string) {
+		if question, ok := message.ModelQuestion(body.Message); ok {
+			if reply := s.assistantAnswer(r, question); reply != "" {
+				model = "openrouter-answer-v1"
+				respond(reply)
+				return
+			}
+		}
+		respond(fallback)
+	}
+	if message.IsGreeting() {
+		answerWithModel(assistantGreeting)
+		return
+	}
 	if message.UnrelatedRequest() {
-		respond(scopeReply)
+		respond(assistantScopeReply)
 		return
 	}
 	if guide := message.SiteGuide(); guide != "" {
@@ -109,7 +122,7 @@ func (s *Server) assistantChat(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed := message.Query(masters)
 	if len(parsed.Services) == 0 && !message.HospitalSearch() {
-		respond(scopeReply)
+		answerWithModel(assistantScopeReply)
 		return
 	}
 	data.ParsedQuery = &parsed

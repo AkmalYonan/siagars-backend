@@ -112,6 +112,8 @@ func TestAssistantLLMFallbackAndLocalRoutes(t *testing.T) {
 		return openrouter.Selection{}, nil
 	})}
 	for _, tc := range []struct{ message, reply string }{
+		{"Halo!", "Halo! Saya asisten SiagaRS."},
+		{"Halo, cari NICU di Kota Bekasi", "wilayah yang lebih luas"},
 		{"Cari NICU dan IGD di Kota Bekasi tanpa BPJS", "wilayah yang lebih luas"},
 		{"Cari rumah sakit di Kota Bekasi tanpa NICU", "hanya layanan"},
 		{"IGD nggak perlu, cari NICU di Bekasi", "Kabupaten Bekasi"},
