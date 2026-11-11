@@ -179,7 +179,13 @@ Catatan wajib di UI: gap berarti **"tidak ada RS dengan layanan tersebut yang te
 ```
 bbox tidak valid / luas > 2° × 2° → 422. `bpjs=true|false` menyaring seperti `/hospitals` (null tidak cocok); `services` tidak menyaring, hanya menentukan `match` (`all` bila kosong). `meta` juga memuat `count`, `dataset`, `as_of`.
 
-## 8. Kepatuhan FE
+## 8. Asisten pencarian rumah sakit (BE-52)
+
+- `POST /api/v1/assistant/chat` bersifat publik dengan JSON dan batas 30 permintaan per menit per IP. Kirim `message` berbahasa Indonesia, UUID v4 `conversation_id` opsional, dan `context` opsional berisi pasangan `lat`/`lng`. Setiap pesan diproses secara mandiri.
+- Gunakan `data.reply` untuk balasan, `data.is_emergency` untuk peringatan, dan `data.recommendations` untuk kartu hasil. Jika `data.alternatives` berisi data, tampilkan judul **Alternatif**, kartu dari `recommendation`, dan `note` pada setiap kartu. `meta.candidates_truncated` menandakan pencarian mencapai batas kandidat.
+- HTTP `200` mencakup klarifikasi, peringatan darurat, dan hasil kosong. Pertahankan CTA darurat saat permintaan gagal. Panggil endpoint melalui rewrite pada origin frontend. Skema dan contoh resmi ada di [OpenAPI](../backend/docs/openapi.yaml).
+
+## 9. Kepatuhan FE
 
 - Tipe di `lib/contracts/types.ts`, fungsi di `lib/api/endpoints.ts`, label di `lib/contracts/labels.ts`.
 - FE **tidak** menghitung ulang skor rekomendasi atau kualitas data; hanya menampilkan. Pengecualian: penanda "unggul" di bandingkan (FE-13) dihitung FE dari data compare.

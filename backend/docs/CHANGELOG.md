@@ -2,6 +2,11 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## Belum dirilis
+
+- **BE-52** — `POST /assistant/chat` menerima satu pesan bahasa Indonesia untuk mencari RS. Hasil utama memerlukan data layanan yang tercatat tersedia dan BPJS yang tercatat menerima bila diminta. Jika hasil utama kosong, `data.alternatives` dapat memuat opsi dengan layanan dan wilayah yang sama beserta alasan per kartu.
+- Integrasikan melalui rewrite frontend `/api/v1/:path*`. Perlakukan balasan darurat, klarifikasi, dan hasil kosong sebagai respons `200`. Pertahankan akses ke CTA darurat saat API gagal. Contoh respons tersedia di [fixtures.json](fixtures.json).
+
 ## 1.0.0
 
 - Rilis Data Mix memakai identitas RS dari SATUSEHAT Sandbox dan fakta demo berlabel `simulation`. `curated_count=0` valid untuk data rilis.

@@ -1,4 +1,43 @@
 {
+  "assistant_chat_emergency": {
+    "data": {
+      "reply": "Peringatan gawat darurat. Segera hubungi 119 untuk bantuan medis atau 112 jika tersedia di daerah Anda. Segera cari pertolongan di IGD terdekat.",
+      "is_emergency": true,
+      "emergency_keywords": [
+        "tidak sadar"
+      ],
+      "parsed_query": null,
+      "recommendations": [],
+      "alternatives": []
+    },
+    "meta": {
+      "model": "rule-nlp-v1",
+      "candidates_truncated": false
+    }
+  },
+  "assistant_chat_empty": {
+    "data": {
+      "reply": "Pencarian ini belum menemukan rumah sakit sesuai filter Anda. Coba kirim ulang permintaan dengan wilayah yang lebih luas.",
+      "is_emergency": false,
+      "emergency_keywords": [],
+      "parsed_query": {
+        "services": [
+          "nicu"
+        ],
+        "province_code": "32",
+        "city_code": "3275",
+        "location_label": "Kota Bekasi, Jawa Barat",
+        "bpjs": "wajib",
+        "dataset": "real"
+      },
+      "recommendations": [],
+      "alternatives": []
+    },
+    "meta": {
+      "model": "rule-nlp-v1",
+      "candidates_truncated": false
+    }
+  },
   "hospital_detail": {
     "data": {
       "id": "10000000-0000-4000-8000-000000000001",

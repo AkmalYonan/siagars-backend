@@ -161,6 +161,10 @@ Estimasi dalam **HO** (hari-orang). Prioritas: **P0** wajib untuk versi tsb, **P
 
 ## 7. Phase 5 — Pasca-lomba (Des 2026+)
 
+| ID | Pekerjaan | Owner | Kriteria |
+|---|---|---|---|
+| BE-52 | Asisten pencarian rumah sakit | **BE** + **FE** | Kontrak chat dan alternatif BPJS disepakati, kartu alternatif menampilkan catatan, dan alur pencarian serta darurat lulus smoke test staging. |
+
 | Versi | Tema | BE | FE | PM |
 |---|---|---|---|---|
 | v1.2 | Kualitas produk | Sync MSI terjadwal, deteksi RS nonaktif, `$toLower` Unicode, sort jarak di DB | Peta Leaflet/MapLibre + tile provider produksi, PWA (offline daftar RS tersimpan), favorit lokal | Wawancara 10 pengguna |

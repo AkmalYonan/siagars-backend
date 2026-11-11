@@ -52,6 +52,34 @@ func (m *Mongo) RecommendCandidates(ctx context.Context, q service.RecommendQuer
 	return hs, truncated, e
 }
 
+func (m *Mongo) AssistantCandidates(ctx context.Context, q service.AssistantSearch) ([]domain.Hospital, bool, error) {
+	base := hospitalMatch(service.Search{Dataset: "real", Province: q.Province, City: q.City}, time.Time{})
+	and, _ := base[0].Value.(bson.A)
+	and = append(and, bson.D{{Key: "operational", Value: bson.D{{Key: "$ne", Value: false}}}})
+	if q.Area != nil {
+		and = append(and, bboxCondition(*q.Area))
+	}
+	knownOrigin := bson.D{{Key: "$exists", Value: true}, {Key: "$nin", Value: bson.A{nil, "", "simulation"}}}
+	for _, slug := range q.Services {
+		available := bson.D{{Key: "slug", Value: slug}, {Key: "status", Value: "available"}, {Key: "data_origin", Value: knownOrigin}}
+		and = append(and, bson.D{{Key: "services", Value: bson.D{{Key: "$elemMatch", Value: available}}}})
+	}
+	if q.BPJSRequired {
+		accepted := bson.D{{Key: "bpjs", Value: true}, {Key: "bpjs_data_origin", Value: knownOrigin}}
+		if q.Alternatives {
+			and = append(and, bson.D{{Key: "$nor", Value: bson.A{accepted}}})
+		} else {
+			and = append(and, accepted)
+		}
+	}
+	docs, truncated, err := m.inArea(ctx, bson.D{{Key: "$and", Value: and}}, service.MaxCandidates, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	hospitals, err := m.joinNames(ctx, docs)
+	return hospitals, truncated, err
+}
+
 // MarkerHospitals loads the hospitals inside a map box with only the fields a marker needs.
 func (m *Mongo) MarkerHospitals(ctx context.Context, q service.MarkersQuery) ([]domain.Hospital, bool, error) {
 	match := hospitalMatch(service.Search{Dataset: q.Dataset, BPJS: q.BPJS}, time.Time{})
