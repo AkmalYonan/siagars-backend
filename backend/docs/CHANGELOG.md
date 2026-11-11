@@ -2,6 +2,12 @@
 
 Untuk tim frontend. Versi mengikuti `info.version` di [`openapi.yaml`](openapi.yaml) dan tampil di `/docs`. Selama masih 0.x, perubahan bersifat **aditif** kecuali dicatat sebagai "Perubahan perilaku".
 
+## 1.0.0 (kandidat rilis)
+
+- `curated_count` pada Summary dan Coverage menghitung setiap RS sekali bila RS, layanan, bed, atau BPJS memiliki origin `curated`.
+- Rate limit login, tracking, dan BPJS berbagi kuota antar instance melalui MongoDB. Migrasi `009_rate_limits` membuat indeks TTL. Jika penyimpanan rate limit gagal, login mengembalikan `503 service_unavailable` dan endpoint publik memakai limiter lokal.
+- Suite Playwright API menjadi pemeriksaan staging dan menguji perubahan operator pada fixture simulasi.
+
 ## 0.5.0 (27 Okt 2026) - Insights & Data (BE-20, BE-22; BE-23 sudah terpenuhi)
 
 Contoh respons: [`fixtures.json`](fixtures.json) (`insights_summary`, `insights_coverage`, `insights_service_gaps`, `insights_freshness`).

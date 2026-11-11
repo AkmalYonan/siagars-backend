@@ -784,7 +784,7 @@
     "data": {
       "hospital_count": 34,
       "city_count": 5,
-      "curated_count": 30,
+      "curated_count": 32,
       "simulated_facility_count": 0,
       "fresh_ratio": 0.12,
       "with_known_bpjs_ratio": 0.88

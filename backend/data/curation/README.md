@@ -45,7 +45,7 @@ JSON: `{"schema_version":1,"hospitals":[...]}`. CSV: satu RS per baris, kolom `s
 
 - Satu record bermasalah menolak perintah; tidak ada penerapan sebagian dari berkas yang tidak valid. Exit non-zero.
 - `0` dan `null` dijaga berbeda: `available: 0` berarti penuh, null berarti tidak diketahui.
-- Apply hanya menambah. Layanan/bed yang sudah ada (termasuk hasil pembaruan operator) **tidak ditimpa** dan dilaporkan sebagai "tetap". `bpjs` hanya diisi bila masih null. Field RS dari MSI, origin tingkat RS, dan `version` item operator tidak disentuh. Item baru: origin `curated`, `version` 1, `verified_at` null, `synced_at` waktu apply.
+- Apply menambah layanan/bed yang belum ada atau mengganti item simulasi versi 1. Data operator dan data terkurasi tetap dipertahankan. `bpjs` diisi bila masih null atau berlabel simulasi. Field RS dari MSI, origin tingkat RS, dan `version` item operator tidak disentuh. Item baru: origin `curated`, `version` 1, `verified_at` null, `synced_at` waktu apply.
 - Mengulang apply tidak mengubah apa pun. Untuk mengoreksi data curated yang sudah masuk, gunakan alur pembaruan operator atau migration/skrip terpisah yang ditinjau; pipeline ini tidak menimpa.
 - RS yang tidak ditemukan (belum di-sync dari MSI) dilaporkan dan membuat exit non-zero.
 - Audit log belum ditulis oleh pipeline ini; simpan berkas kurasi yang diterapkan (versi, PIC, tanggal) sebagai catatan.

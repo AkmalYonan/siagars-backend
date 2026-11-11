@@ -7,22 +7,6 @@ export const operator = {
   email: process.env.OPERATOR_EMAIL ?? '',
   password: process.env.OPERATOR_PASSWORD ?? '',
 };
-export const hasOperator = operator.email !== '' && operator.password !== '';
-export const allowMutation = process.env.E2E_ALLOW_MUTATION === '1';
-export const uiEnabled = process.env.SIAGARS_UI === '1';
-
-export const STATUSES = ['submitted', 'verified', 'searching', 'confirmed', 'completed', 'rejected'] as const;
-export type Status = (typeof STATUSES)[number];
-// Mesin status PRD bagian 4 (confirmed -> searching memerlukan catatan alasan).
-export const NEXT: Record<Status, Status[]> = {
-  submitted: ['verified'],
-  verified: ['searching', 'rejected'],
-  searching: ['confirmed', 'rejected'],
-  confirmed: ['completed', 'searching'],
-  completed: [],
-  rejected: [],
-};
-
 export interface Hospital {
   id: string;
   name: string;
