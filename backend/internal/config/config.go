@@ -29,6 +29,17 @@ type Config struct {
 	// TrustedProxies are the networks whose X-Forwarded-For header is believed; empty means never.
 	TrustedProxies []netip.Prefix
 	SATUSEHAT      SATUSEHATConfig
+	AssistantLLM   AssistantLLMConfig
+}
+
+type AssistantLLMConfig struct {
+	Enabled                 bool
+	APIKey, Model, Provider string
+}
+
+func (c AssistantLLMConfig) Ready() bool {
+	return c.Enabled && c.APIKey != "" &&
+		strings.HasSuffix(c.Model, ":free") && strings.Contains(c.Model, "/") && c.Provider != ""
 }
 
 // SATUSEHATConfig is read-only MSI Sandbox access. The API server only validates it;
@@ -123,6 +134,12 @@ func Load() (Config, error) {
 	}
 	if c.JobSecret = strings.TrimSpace(os.Getenv("JOB_SECRET")); c.JobSecret != "" && len(c.JobSecret) < 32 {
 		return c, fmt.Errorf("JOB_SECRET must be at least 32 characters")
+	}
+	c.AssistantLLM = AssistantLLMConfig{
+		Enabled:  get("ASSISTANT_LLM_ENABLED", "false") == "true",
+		APIKey:   strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")),
+		Model:    strings.TrimSpace(os.Getenv("OPENROUTER_MODEL")),
+		Provider: strings.TrimSpace(os.Getenv("OPENROUTER_PROVIDER")),
 	}
 	return c, nil
 }

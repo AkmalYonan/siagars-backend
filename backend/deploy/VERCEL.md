@@ -109,6 +109,14 @@ Pemilik proyek menyetujui deploy ini. Beberapa hal berbeda dari checklist go-liv
 
 ## Staging (branch `develop`)
 
+### Pilot OpenRouter untuk asisten
+
+Gunakan proyek Preview dengan data sintetis. Tambahkan `OPENROUTER_API_KEY` sebagai secret backend. Untuk pilot NVIDIA, set `OPENROUTER_MODEL=nvidia/nemotron-3.5-super-vl:free`, `OPENROUTER_PROVIDER=nvidia`, dan `ASSISTANT_LLM_ENABLED=true`, lalu deploy ulang. Pasangan ini memakai endpoint uji NVIDIA yang mencatat penggunaan. Payload tetap terbatas pada ID layanan dan penanda bahasa yang diizinkan. Kombinasi lain tetap mensyaratkan ZDR dan kebijakan tanpa pengumpulan data. [Kebijakan endpoint NVIDIA](https://openrouter.ai/nvidia/nemotron-3.5-super-vl%3Afree)
+
+Uji “ICU nggak perlu, yang saya cari NICU di Kota Bekasi” dengan fixture sintetis. Hasil yang memakai model memuat `services: ["nicu"]` dan `meta.model: "openrouter-filter-v1"`. Uji juga permintaan yang jelas, panduan fitur, darurat, dan fallback saat provider tidak tersedia. Pantau event `assistant llm` dari log server untuk hasil penafsiran, alasan fallback, dan latensi. Kuota pilot bersama adalah 10 per menit dan 40 per hari berdasarkan UTC.
+
+Aktifkan Production setelah evaluasi staging lulus. Gunakan key terpisah untuk setiap lingkungan, dengan memperhitungkan kuota akun OpenRouter. Untuk rollback, set `ASSISTANT_LLM_ENABLED=false` dan deploy ulang. Jika kombinasi model dan provider gratis yang sesuai belum tersedia, biarkan flag nonaktif.
+
 Branch `develop` dideploy sebagai Preview dan dipakai frontend (Arya) selama pengembangan; `main` tetap production. Push ke `develop` memicu deploy Preview otomatis, push ke `main` memicu production.
 
 Preview deployment tidak memakai env Production. Tambahkan di Vercel > Settings > Environment Variables dengan **Environments = Preview** (bila ada pilihan branch, isi `develop`):

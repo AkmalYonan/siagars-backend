@@ -22,7 +22,7 @@ Panggil `POST /api/v1/assistant/chat` melalui rewrite pada origin frontend. Targ
 1. Untuk setiap `200`, tampilkan `data.reply` sebagai teks. Darurat, klarifikasi, dan hasil kosong sudah merupakan balasan akhir. Pertahankan CTA darurat saat API gagal.
 2. Jika `data.is_emergency` bernilai `true`, tampilkan peringatan dan CTA panggilan `119` atau `112` jika tersedia di daerah pengguna. `emergency_keywords` memuat frasa yang terdeteksi. [PSC 119](https://kemkes.go.id/id/layanan/psc-119) · [Layanan 112](https://layanan112.komdigi.go.id/tentang)
 3. Render `data.recommendations` menggunakan kartu `Recommendation` yang sama dengan `GET /api/v1/recommendations`. Pertahankan penanda kualitas dan provenance. Jika `data.alternatives` berisi item, tampilkan judul **Alternatif**, kartu dari `item.recommendation`, dan `item.note` pada setiap kartu. Kode alasan adalah `bpjs_not_accepted` atau `bpjs_unknown`.
-4. `parsed_query` bisa `null`. Jika ada, `bpjs` berisi `wajib` atau `any`, `dataset` berisi `real`, dan kode wilayah atau label bisa `null`. `meta.model` berisi `rule-nlp-v1`. Jika `meta.candidates_truncated` bernilai `true`, gunakan balasan server untuk menjelaskan batas pencarian.
+4. `parsed_query` bisa `null`, termasuk untuk panduan fitur. Jika ada, `bpjs` berisi `wajib` atau `any`, `dataset` berisi `real`, dan kode wilayah atau label bisa `null`. Terima `meta.model` bernilai `rule-nlp-v1` atau `openrouter-filter-v1`. Jika `meta.candidates_truncated` bernilai `true`, gunakan balasan server untuk menjelaskan batas pencarian.
 
 ## Uji integrasi
 
