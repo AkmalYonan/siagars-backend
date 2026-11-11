@@ -59,12 +59,20 @@ type Directory interface {
 	Regions(context.Context) ([]domain.Region, error)
 	SuggestHospitals(ctx context.Context, q, dataset string, limit int) ([]domain.Suggestion, error)
 }
+type rateLimitStore interface {
+	TakeRateLimit(context.Context, string, int, time.Duration, time.Time) (bool, error)
+	ClearRateLimit(context.Context, string, time.Duration, time.Time) error
+}
+
 type Server struct {
-	repo  Store
-	cfg   config.Config
-	ready func(context.Context) error
-	lim   limiter
-	dummy []byte
+	repo          Store
+	cfg           config.Config
+	ready         func(context.Context) error
+	lim           limiter
+	sharedLimiter rateLimitStore
+	dummy         []byte
+	// insights caches rendered /insights/* bodies for 5 minutes (BE-20).
+	insights insightCache
 }
 type contextKey int
 
@@ -73,12 +81,14 @@ const requestKey contextKey = 0
 func New(repo Store, cfg config.Config, ready func(context.Context) error) http.Handler {
 	dummy, _ := bcrypt.GenerateFromPassword([]byte(random()), 12)
 	s := &Server{repo: repo, cfg: cfg, ready: ready, dummy: dummy}
+	s.sharedLimiter, _ = repo.(rateLimitStore)
 	mux := http.NewServeMux()
+	insSummary, insCoverage, insGaps, insFreshness := s.insightHandlers()
 	routes := []struct {
 		method, path string
 		handler      http.HandlerFunc
 	}{
-		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/hospitals/markers", s.markers}, {"GET", "/recommendations", s.recommendations}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
+		{"GET", "/health", s.health}, {"GET", "/ready", s.readiness}, {"GET", "/services", s.services}, {"GET", "/hospitals", s.hospitals}, {"GET", "/hospitals/compare", s.compare}, {"GET", "/hospitals/suggest", s.suggest}, {"GET", "/hospitals/markers", s.markers}, {"GET", "/recommendations", s.recommendations}, {"GET", "/insights/summary", insSummary}, {"GET", "/insights/coverage", insCoverage}, {"GET", "/insights/service-gaps", insGaps}, {"GET", "/insights/freshness", insFreshness}, {"GET", "/regions", s.regions}, {"GET", "/hospitals/{id}", s.hospital},
 		{"POST", "/referrals/lookup", s.lookup}, {"POST", "/bpjs/check", s.bpjsCheck}, {"GET", "/admin/bpjs-checks", s.bpjsHistory}, {"POST", "/auth/login", s.login}, {"GET", "/auth/me", s.me}, {"GET", "/auth/csrf", s.csrf}, {"POST", "/auth/logout", s.logout},
 		{"POST", "/internal/jobs/refresh-simulation", s.refreshSimulation}, {"GET", "/internal/jobs/refresh-simulation", s.refreshSimulation},
 		{"GET", "/admin/referrals", s.referrals}, {"GET", "/admin/hospitals", s.adminHospitals}, {"GET", "/admin/hospitals/{id}", s.adminHospital}, {"PATCH", "/admin/referrals/{id}/status", s.updateReferral}, {"PATCH", "/admin/hospitals/{id}/services/{slug}", s.updateService}, {"PATCH", "/admin/hospitals/{id}/beds/{category}", s.updateBed},
@@ -629,7 +639,28 @@ func (s *Server) trusted(a netip.Addr) bool {
 	return false
 }
 func (s *Server) rate(w http.ResponseWriter, r *http.Request, key string, max int, window time.Duration) bool {
-	if !s.lim.allow(key, max, window, time.Now()) {
+	return s.rateAt(w, r, key, max, window, time.Now())
+}
+
+func (s *Server) rateAt(w http.ResponseWriter, r *http.Request, key string, max int, window time.Duration, now time.Time) bool {
+	allowed := false
+	if s.sharedLimiter == nil {
+		allowed = s.lim.allow(key, max, window, now)
+	} else {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		var err error
+		allowed, err = s.sharedLimiter.TakeRateLimit(ctx, key, max, window, now)
+		cancel()
+		if err != nil {
+			slog.Warn("shared rate limiter unavailable", "request_id", rid(r), "route", r.Pattern)
+			if strings.HasPrefix(key, "login") {
+				fail(w, r, 503, "service_unavailable", "Layanan sementara tidak tersedia")
+				return false
+			}
+			allowed = s.lim.allow(key, max, window, now)
+		}
+	}
+	if !allowed {
 		w.Header().Set("Retry-After", "60")
 		fail(w, r, 429, "rate_limited", "Terlalu banyak percobaan; coba lagi nanti")
 		return false
@@ -656,7 +687,8 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := "login:" + repository.Hash(s.clientIP(r)+"|"+b.Email)
-	if !s.rate(w, r, key, 5, 15*time.Minute) {
+	attemptedAt := time.Now()
+	if !s.rateAt(w, r, key, 5, 15*time.Minute, attemptedAt) {
 		return
 	}
 	id, hash, e := s.repo.Credentials(r.Context(), b.Email)
@@ -681,6 +713,13 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.lim.clear(key)
+	if s.sharedLimiter != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+		if err := s.sharedLimiter.ClearRateLimit(ctx, key, 15*time.Minute, attemptedAt); err != nil {
+			slog.Warn("could not reset login rate limit", "request_id", rid(r))
+		}
+	}
 	s.cookie(w, token, expiry, int(s.cfg.SessionTTL.Seconds()))
 	ok(w, map[string]any{"csrf_token": csrf, "expires_at": expiry})
 }

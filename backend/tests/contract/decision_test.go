@@ -137,3 +137,47 @@ func TestDataQualityOnEveryHospitalDTO(t *testing.T) {
 		}
 	}
 }
+
+// TestInsights checks the four /insights/* endpoints against the OpenAPI schemas (via r.do) and the
+// numbers the rig's six hospitals must produce.
+func TestInsights(t *testing.T) {
+	r := decisionRig(t)
+	w, body := r.do(call{method: "GET", path: "/api/v1/insights/summary?dataset=all", remote: r.ip()})
+	if w.Code != 200 || w.Header().Get("Cache-Control") != "public, max-age=300" {
+		t.Fatalf("%d %q %s", w.Code, w.Header().Get("Cache-Control"), w.Body.String())
+	}
+	s := obj(body["data"])
+	if num(s["hospital_count"]) != 6 || num(s["city_count"]) != 1 || num(s["curated_count"]) != 5 || num(s["simulated_facility_count"]) != 2 {
+		t.Fatalf("summary: %v", s)
+	}
+	if num(s["fresh_ratio"]) != 5.0/6 || num(s["with_known_bpjs_ratio"]) != 3.0/6 {
+		t.Fatalf("rasio: %v", s)
+	}
+	// Default dataset is real: the simulated hospital drops out.
+	_, body = r.do(call{method: "GET", path: "/api/v1/insights/summary", remote: r.ip()})
+	if num(obj(body["data"])["hospital_count"]) != 5 {
+		t.Fatalf("real: %v", body["data"])
+	}
+	_, body = r.do(call{method: "GET", path: "/api/v1/insights/service-gaps?service=nicu&dataset=all&province_code=31", remote: r.ip()})
+	g := obj(dataList(t, body)[0])
+	if num(g["available"]) != 4 || num(g["unavailable"]) != 1 || num(g["unknown"]) != 1 || g["gap"] != false {
+		t.Fatalf("service-gaps: %v", g)
+	}
+	// A province with no hospital in the data is valid and yields an empty list, not a gap claim.
+	_, body = r.do(call{method: "GET", path: "/api/v1/insights/coverage?province_code=32", remote: r.ip()})
+	if len(dataList(t, body)) != 0 {
+		t.Fatalf("coverage 32: %v", body["data"])
+	}
+	_, body = r.do(call{method: "GET", path: "/api/v1/insights/freshness?dataset=all", remote: r.ip()})
+	if len(dataList(t, body)) != 2 {
+		t.Fatalf("freshness: %v", body["data"])
+	}
+	for _, q := range []string{"summary?x=1", "summary?dataset=x", "summary?province_code=99", "coverage?service=nicu", "service-gaps", "service-gaps?service=nope", "freshness?province_code=31&province_code=32"} {
+		if w, _ := r.do(call{method: "GET", path: "/api/v1/insights/" + q, remote: r.ip()}); w.Code != 422 || w.Header().Get("Cache-Control") != "no-store" {
+			t.Errorf("%s: %d %q", q, w.Code, w.Header().Get("Cache-Control"))
+		}
+	}
+	if w, _ := r.do(call{method: "POST", path: "/api/v1/insights/summary", remote: r.ip()}); w.Code != 405 {
+		t.Error("POST:", w.Code)
+	}
+}

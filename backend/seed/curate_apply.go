@@ -23,7 +23,7 @@ type CurateOutcome struct {
 }
 
 // ApplyCuration adds curated facts to hospitals that already exist (matched by namespace + external_id).
-// Every write is a conditional $set/$push, so repeating it is a no-op and nothing existing is replaced.
+// Conditional writes preserve curated facts and operator updates, and repeating an import is a no-op.
 // Hospital-level origin, verified_at and operator versions are never touched; new items are created with
 // data_origin=curated, version 1 and verified_at=null.
 func ApplyCuration(ctx context.Context, db *mongo.Database, records []CuratedHospital, at time.Time) ([]CurateOutcome, error) {
@@ -106,8 +106,14 @@ func curatedProvenance(sourceURL string, sourceUpdatedAt, syncedAt time.Time) re
 // pushIfAbsent adds an item unless one with the same key exists. An untouched simulation item (version 1,
 // from dummy-facilities) is replaced by sourced data; anything else is never overwritten.
 func pushIfAbsent(ctx context.Context, c *mongo.Collection, id, field, column, value string, item any) (bool, error) {
-	if _, e := c.UpdateOne(ctx, bson.D{{Key: "_id", Value: id}}, bson.D{{Key: "$pull", Value: bson.D{{Key: field, Value: bson.D{{Key: column, Value: value}, {Key: "data_origin", Value: "simulation"}, {Key: "version", Value: 1}}}}}}); e != nil {
+	simulation := bson.D{{Key: column, Value: value}, {Key: "data_origin", Value: "simulation"}, {Key: "version", Value: 1}}
+	filter := bson.D{{Key: "_id", Value: id}, {Key: field, Value: bson.D{{Key: "$elemMatch", Value: simulation}}}}
+	replaced, e := c.UpdateOne(ctx, filter, bson.D{{Key: "$set", Value: bson.D{{Key: field + ".$", Value: item}}}})
+	if e != nil {
 		return false, fmt.Errorf("%s %s: %w", field, value, e)
+	}
+	if replaced.ModifiedCount == 1 {
+		return true, nil
 	}
 	res, e := c.UpdateOne(ctx, bson.D{{Key: "_id", Value: id}, {Key: field + "." + column, Value: bson.D{{Key: "$ne", Value: value}}}}, bson.D{{Key: "$push", Value: bson.D{{Key: field, Value: item}}}})
 	if e != nil {
@@ -121,4 +127,28 @@ func tally(added, kept []string, v string, wasAdded bool) ([]string, []string) {
 		return append(added, v), kept
 	}
 	return added, append(kept, v)
+}
+
+// AuditCounts summarises outcomes for the audit log (BE-22): updated = hospitals that received at least
+// one value, unchanged = hospitals found where everything already existed, failed = records not found,
+// with a name mismatch or with a service slug missing from the master; services/beds = items added.
+// A record can be both updated and failed (some items written, one slug missing).
+func AuditCounts(outcomes []CurateOutcome) map[string]int {
+	c := map[string]int{"updated": 0, "unchanged": 0, "failed": 0, "services": 0, "beds": 0}
+	for _, o := range outcomes {
+		c["services"] += len(o.ServicesAdded)
+		c["beds"] += len(o.BedsAdded)
+		if !o.Found || o.NameMismatch || len(o.Missing) > 0 {
+			c["failed"]++
+		}
+		if !o.Found || o.NameMismatch {
+			continue
+		}
+		if o.BPJSSet || len(o.ServicesAdded) > 0 || len(o.BedsAdded) > 0 {
+			c["updated"]++
+		} else {
+			c["unchanged"]++
+		}
+	}
+	return c
 }

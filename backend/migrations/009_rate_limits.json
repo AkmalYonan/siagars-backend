@@ -1,0 +1,10 @@
+{
+  "commands": [
+    {
+      "createIndexes": "rate_limits",
+      "indexes": [
+        {"key": {"expires_at": 1}, "name": "rate_limits_expiry", "expireAfterSeconds": 0}
+      ]
+    }
+  ]
+}

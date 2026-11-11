@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { API, Hospital, json, uiEnabled } from './helpers';
+import { API, Hospital, json } from './helpers';
 
 // Alur 1: cari -> detail. Berjalan terhadap backend yang sudah di-seed (RS simulasi, dataset=simulation).
 test.describe('cari -> detail (API)', () => {
@@ -10,7 +10,7 @@ test.describe('cari -> detail (API)', () => {
     expect(list.meta).toMatchObject({ page: 1, limit: 5, data_scope: 'pilot', dataset: 'simulation' });
     expect(typeof list.meta.as_of).toBe('string');
     expect(Array.isArray(list.data)).toBe(true);
-    test.skip(list.data.length === 0, 'seed simulasi belum dimuat: jalankan seed pada database uji');
+    expect(list.data.length, 'seed simulasi wajib tersedia').toBeGreaterThan(0);
 
     for (const h of list.data) {
       const open = (slug: string) => h.services.some((s) => s.slug === slug && ['available', 'limited'].includes(s.status));
@@ -42,19 +42,5 @@ test.describe('cari -> detail (API)', () => {
 
   test('parameter tak dikenal -> 422', async ({ request }) => {
     expect((await request.get(`${API}/hospitals?bogus=1`)).status()).toBe(422);
-  });
-
-  test.describe('UI', () => {
-    test.skip(!uiEnabled, 'TODO UI: frontend belum ada. Hapus skip ini saat halaman pencarian tersedia (SIAGARS_UI=1).');
-
-    test('pengguna mencari nama, membuka hasil, melihat detail dengan label sumber dan kesegaran', async ({ page }) => {
-      // TODO UI: sesuaikan selector (getByRole) dengan komponen final.
-      // await page.goto('/');
-      // await page.getByRole('searchbox', { name: /cari/i }).fill('Siaga');
-      // await page.getByRole('link', { name: /RS Simulasi Siaga 01/ }).click();
-      // await expect(page.getByRole('heading', { name: /RS Simulasi Siaga 01/ })).toBeVisible();
-      // await expect(page.getByText(/simulasi/i).first()).toBeVisible();   // label simulation terlihat
-      // await expect(page.getByText(/diperbarui|kesegaran/i).first()).toBeVisible();
-    });
   });
 });

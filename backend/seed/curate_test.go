@@ -168,3 +168,22 @@ func TestRunCurateGuards(t *testing.T) {
 		t.Error("README missing")
 	}
 }
+
+func TestAuditCounts(t *testing.T) {
+	got := AuditCounts([]CurateOutcome{
+		{ExternalID: "a", Found: true, BPJSSet: true, ServicesAdded: []string{"icu", "nicu"}, BedsAdded: []string{"icu"}},
+		{ExternalID: "b", Found: true, ServicesKept: []string{"icu"}}, // nothing new
+		{ExternalID: "c"}, // not found
+		{ExternalID: "d", Found: true, NameMismatch: true},                                  // wrong external_id
+		{ExternalID: "e", Found: true, BedsAdded: []string{"picu"}, Missing: []string{"x"}}, // partial
+	})
+	want := map[string]int{"updated": 2, "unchanged": 1, "failed": 3, "services": 2, "beds": 2}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s = %d, want %d (%v)", k, got[k], v, got)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("kunci tak terduga: %v", got)
+	}
+}

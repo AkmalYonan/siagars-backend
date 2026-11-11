@@ -1,6 +1,5 @@
 # BE-04: gofmt, vet, unit + contract tests and the race detector on every PR and push to develop/main.
-# MongoDB integration tests run only when the TEST_MONGODB_URI secret is configured; each run creates and
-# drops its own siagars_test_<ts> database.
+# Integration uses a disposable MongoDB replica set on the runner.
 name: backend-ci
 
 on:
@@ -51,20 +50,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
-    # Secrets are not passed to PRs from forks, so the job is skipped there instead of failing.
-    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     env:
-      TEST_MONGODB_URI: ${{ secrets.TEST_MONGODB_URI }}
+      TEST_MONGODB_URI: mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - name: MongoDB integration
+      - name: Start MongoDB replica set
         run: |
-          if [ -z "$TEST_MONGODB_URI" ]; then
-            echo "::notice::TEST_MONGODB_URI belum di-set; integrasi MongoDB dilewati."
-            exit 0
-          fi
-          go test -count=1 ./tests/integration/...
+          docker run --detach --name siagars-mongo --publish 127.0.0.1:27017:27017 \
+            --entrypoint mongod mongo:7.0 --replSet rs0 --bind_ip_all --wiredTigerCacheSizeGB 0.25
+          trap 'docker logs --tail 100 siagars-mongo' ERR
+          for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Running}}' siagars-mongo)" != true ]; then
+              docker logs --tail 100 siagars-mongo
+              exit 1
+            fi
+            if docker exec siagars-mongo mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok' | grep -qx 1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec siagars-mongo mongosh --quiet --eval 'rs.initiate({_id: "rs0", members: [{_id: 0, host: "localhost:27017"}]})'
+          for attempt in {1..30}; do
+            if docker exec siagars-mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' | grep -qx true; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::MongoDB replica set did not elect a primary."
+          docker logs --tail 100 siagars-mongo
+          exit 1
+      - name: MongoDB integration
+        run: go test -count=1 ./tests/integration/...

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { DEMO_CODE, json, lookup, uiEnabled } from './helpers';
+import { DEMO_CODE, json, lookup } from './helpers';
 
 // Alur 2: lookup SR-DEMO-001. Jaga jumlah request: lookup dibatasi 10/menit/IP, jadi 429 tidak diuji di sini.
 test.describe('lookup tracking (API)', () => {
@@ -21,18 +21,5 @@ test.describe('lookup tracking (API)', () => {
     const res = await lookup(request, 'SR-TIDAK-ADA-999');
     expect(res.status()).toBe(404);
     expect((await res.json()).error.code).toBe('not_found');
-  });
-
-  test.describe('UI', () => {
-    test.skip(!uiEnabled, 'TODO UI: frontend belum ada. Aktifkan saat halaman lacak rujukan tersedia.');
-
-    test('memasukkan SR-DEMO-001 menampilkan status, langkah berikutnya, dan label skenario sintetis', async ({ page }) => {
-      // TODO UI:
-      // await page.goto('/lacak');
-      // await page.getByLabel(/kode/i).fill('SR-DEMO-001');
-      // await page.getByRole('button', { name: /lacak|cari/i }).click();
-      // await expect(page.getByText(/simulasi|sintetis/i).first()).toBeVisible();
-      // await expect(page.getByRole('list', { name: /riwayat/i })).toBeVisible();
-    });
   });
 });

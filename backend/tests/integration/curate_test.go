@@ -24,6 +24,8 @@ func TestCurateApply(t *testing.T) {
 	// An operator already updated ICU; curation must not overwrite it.
 	opAt := at.Add(-time.Hour)
 	msi.Services = append(msi.Services, repository.ServiceDoc{Slug: "icu", Status: "limited", ProvenanceDoc: repository.Simulation(opAt), Version: 3})
+	// Untouched simulation is replaced in-place without overwriting the operator's ICU update.
+	msi.Services = append(msi.Services, repository.ServiceDoc{Slug: "nicu", Status: "available", ProvenanceDoc: repository.Simulation(at), Version: 1})
 	hospitals := p.DB.Collection("hospitals")
 	if _, e := hospitals.InsertOne(ctx, msi); e != nil {
 		t.Fatal(e)
@@ -55,7 +57,7 @@ func TestCurateApply(t *testing.T) {
 		t.Fatalf("operator update overwritten: %+v", icu)
 	}
 	nicu := got.Services[1]
-	if nicu.DataOrigin != "curated" || nicu.VerifiedAt != nil || nicu.Version != 1 || nicu.SourceURL == nil || *nicu.SourceURL != src || !nicu.SourceUpdatedAt.Equal(srcAt) {
+	if nicu.Status != "unknown" || nicu.DataOrigin != "curated" || nicu.VerifiedAt != nil || nicu.Version != 1 || nicu.SourceURL == nil || *nicu.SourceURL != src || !nicu.SourceUpdatedAt.Equal(srcAt) {
 		t.Fatalf("curated service: %+v", nicu)
 	}
 	icuBed, nicuBed := got.Beds[0], got.Beds[1]
@@ -86,5 +88,27 @@ func TestCurateApply(t *testing.T) {
 	}
 	if n, _ := hospitals.CountDocuments(ctx, bson.D{{Key: "external_id", Value: "PLACEHOLDER-NOPE"}}); n != 0 {
 		t.Fatal("curation must never create hospitals")
+	}
+}
+
+// TestCurateAudit checks BE-22: one audit_logs entry per execution with counts only.
+func TestCurateAudit(t *testing.T) {
+	p := database(t)
+	ctx := context.Background()
+	counts := seed.AuditCounts([]seed.CurateOutcome{{ExternalID: "a", Found: true, BPJSSet: true, ServicesAdded: []string{"icu"}}, {ExternalID: "b"}})
+	if e := p.AuditJob(ctx, "system:curate", "curate.apply", "batch-1.json", "curate", counts); e != nil {
+		t.Fatal(e)
+	}
+	var row struct {
+		ActorID string `bson:"actor_id"`
+		Action  string `bson:"action"`
+		Entity  string `bson:"entity_id"`
+		Changes bson.M `bson:"changes"`
+	}
+	if e := p.DB.Collection("audit_logs").FindOne(ctx, bson.D{{Key: "action", Value: "curate.apply"}}).Decode(&row); e != nil {
+		t.Fatal(e)
+	}
+	if row.ActorID != "system:curate" || row.Entity != "batch-1.json" || row.Changes["updated"] != int32(1) || row.Changes["failed"] != int32(1) || row.Changes["services"] != int32(1) {
+		t.Fatalf("%+v", row)
 	}
 }
